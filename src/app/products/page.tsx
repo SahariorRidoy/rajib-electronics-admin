@@ -17,7 +17,7 @@ import {
   PackageOpen,
   ArrowLeft,
 } from "lucide-react";
-import Image from "next/image";
+import Image from "@/lib/image";
 import { Toaster, toast } from "react-hot-toast";
 
 import {

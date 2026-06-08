@@ -19,7 +19,7 @@ import {
 import { useListOrdersQuery } from "@/services/orders.api";
 import { useListProductsQuery } from "@/services/products.api";
 import { useListCategoriesQuery } from "@/services/categories.api";
-import Image from "next/image";
+import Image from "@/lib/image";
 import Link from "next/link";
 
 export default function DashboardPage() {

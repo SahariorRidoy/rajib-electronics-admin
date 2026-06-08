@@ -14,7 +14,7 @@ import {
   ArrowLeft,
   ChevronRight,
 } from "lucide-react";
-import Image from "next/image";
+import Image from "@/lib/image";
 import { toast, Toaster } from "react-hot-toast";
 import { useListProductsQuery } from "@/services/products.api";
 import { useListCategoriesQuery } from "@/services/categories.api";

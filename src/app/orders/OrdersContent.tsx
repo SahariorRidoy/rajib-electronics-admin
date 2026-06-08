@@ -22,7 +22,7 @@ import {
   ArrowLeft,
   Ban,
 } from "lucide-react";
-import Image from "next/image";
+import Image from "@/lib/image";
 import Link from "next/link";
 import { Toaster, toast } from "react-hot-toast";
 import PrintSettings, { PrintSize } from "@/components/PrintSettings";

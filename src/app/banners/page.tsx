@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Edit2, Trash2, Search, Image as ImageIcon, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
-import Image from "next/image";
+import Image from "@/lib/image";
 import { toast, Toaster } from "react-hot-toast";
 import { useGetBannersQuery, useDeleteBannerMutation, useUpdateBannerMutation, useCreateBannerMutation } from "@/services/banners.api";
 import { useListCategoriesQuery } from "@/services/categories.api";

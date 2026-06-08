@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import Image from "next/image";
+import Image from "@/lib/image";
 import { CheckCircle, Trash2, Star, Pencil, X, Check } from "lucide-react";
 import {
   useGetSettingsQuery,

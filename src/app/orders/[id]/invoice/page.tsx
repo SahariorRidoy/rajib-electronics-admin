@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useGetOrderByIdQuery } from "@/services/orders.api";
 import { useGetProductByIdQuery } from "@/services/products.api";
 import { Printer, ArrowLeft } from "lucide-react";
-import Image from "next/image";
+import Image from "@/lib/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import PrintSettings, { PrintSize } from "@/components/PrintSettings";

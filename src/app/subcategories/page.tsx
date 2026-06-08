@@ -15,7 +15,7 @@ import {
   ArrowLeft,
   X,
 } from "lucide-react";
-import Image from "next/image";
+import Image from "@/lib/image";
 import { toast, Toaster } from "react-hot-toast";
 import {
   useListSubcategoriesQuery,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Edit2, Trash2, Search, Tag, Loader2, Image as ImageIcon, X, ArrowLeft } from "lucide-react";
-import Image from "next/image";
+import Image from "@/lib/image";
 import { toast, Toaster } from "react-hot-toast";
 import {
   useListManufacturersQuery,
