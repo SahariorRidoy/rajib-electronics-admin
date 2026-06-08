@@ -371,11 +371,12 @@ export default function BannersPage() {
               <UploadImage
                 label={formData.position === "hero" ? "Hero Banner Image" : "Side Banner Image"}
                 hint={formData.position === "hero" ? "3:1 · 1800×600 px" : "4:5 · 400×500 px"}
-                value={formData.image ? { url: formData.image, publicId: "" } : null}
+                value={formData.image ? { url: formData.image, filePath: "" } : null}
                 onChange={(v: UploadValue) =>
                   setFormData((s) => ({ ...s, image: v?.url || "" }))
                 }
                 disabled={creating || updating}
+                folder="banners"
               />
 
               <div>

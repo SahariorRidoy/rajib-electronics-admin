@@ -275,6 +275,18 @@ const pagination = productsData?.data
     ? products.filter((p) => p.subcategorySlug === subcategoryFilter)
     : products;
 
+  const resolveImgSrc = (url: string) => {
+    if (!url) return "";
+    // In dev, swap production domain → localhost:5000
+    if (process.env.NODE_ENV === "development") {
+      return url.replace(
+        /https:\/\/api\.rajibelectronics\.com/g,
+        "http://localhost:5000"
+      );
+    }
+    return url;
+  };
+
   // Build DTOs (backend schema aligned)
   const buildCreateDTO = (f: typeof form) => {
     const hasDiscount = f.discountPrice > 0 && f.discountPrice < f.price;
@@ -396,7 +408,7 @@ const pagination = productsData?.data
     setImages(
       (p.images ?? []).map((url) => ({
         url,
-        publicId: url.includes("/upload/")
+        filePath: url.includes("/upload/")
           ? url.split("/upload/")[1].replace(/^v\d+\//, "").replace(/\.[^.]+$/, "")
           : "",
       }))
@@ -623,10 +635,11 @@ const pagination = productsData?.data
                   n(p.price),
                   p.compareAtPrice != null ? n(p.compareAtPrice) : undefined,
                 );
-                const imgSrc =
+                const rawImg =
                   (Array.isArray(p.images) && p.images.length > 0
                     ? p.images[0]
                     : p.image) || "";
+                const imgSrc = resolveImgSrc(rawImg);
 
                 const showImage = isValidImageUrl(imgSrc);
 
@@ -638,17 +651,13 @@ const pagination = productsData?.data
                     {/* Image */}
                     <div className="relative h-40 sm:h-48 lg:h-56 bg-gradient-to-br from-pink-100 via-purple-100 to-rose-100 overflow-hidden">
                       {showImage ? (
-                        <Image
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
                           src={imgSrc}
                           alt={p.title}
-                          width={640}
-                          height={480}
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           onError={(e) => {
-                            (
-                              e.currentTarget as HTMLImageElement
-                            ).style.display = "none";
+                            (e.currentTarget as HTMLImageElement).style.display = "none";
                           }}
                         />
                       ) : (

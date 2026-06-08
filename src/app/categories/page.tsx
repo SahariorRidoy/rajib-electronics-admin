@@ -148,7 +148,7 @@ export default function CategoriesPage() {
         description: cat.description || "",
         isActive: isActive(cat),
       });
-      setBannerImages((cat.images || []).map((url) => ({ url, publicId: "" })));
+      setBannerImages((cat.images || []).map((url) => ({ url, filePath: "" })));
     } else {
       setEditingCategory(null);
       setCategoryForm({ name: "", slug: "", title: "", description: "", isActive: true });
@@ -170,7 +170,7 @@ export default function CategoriesPage() {
         description: sub.description || "",
         isActive: isActive(sub),
       });
-      setBannerImages((sub.images || []).map((url) => ({ url, publicId: "" })));
+      setBannerImages((sub.images || []).map((url) => ({ url, filePath: "" })));
     } else {
       setEditingSubcategory(null);
       setSubcategoryForm({ name: "", slug: "", categoryId, description: "", isActive: true });

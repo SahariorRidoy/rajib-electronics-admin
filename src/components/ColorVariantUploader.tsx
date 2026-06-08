@@ -3,13 +3,13 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Plus, Trash2, UploadCloud, Palette, Loader2 } from "lucide-react";
-import { getUploadSignature, uploadToCloudinary, deleteFromCloudinary } from "@/services/uploads";
+import { uploadFile, deleteFile } from "@/services/uploads";
 
 export type ColorVariantItem = {
   colorName: string;
   colorHex: string;
   image: string;
-  imageId: string;
+  imageId: string; // relative filePath e.g. /uploads/variants/uuid.webp
 };
 
 const PRESET_COLORS = [
@@ -38,7 +38,6 @@ function ColorVariantCard({
 }) {
   return (
     <div className="relative group flex flex-col items-center gap-2 p-3 bg-white rounded-2xl border-2 border-gray-100 hover:border-[#167389]/40 hover:shadow-md transition-all duration-200">
-      {/* Image */}
       <div className="relative w-full h-24 rounded-xl overflow-hidden bg-gray-50 border border-gray-100">
         {item.image ? (
           <Image src={item.image} alt={item.colorName} fill className="object-cover" sizes="160px" />
@@ -48,8 +47,6 @@ function ColorVariantCard({
           </div>
         )}
       </div>
-
-      {/* Color swatch + name */}
       <div className="flex items-center gap-2 w-full">
         <span
           className="w-5 h-5 rounded-full border-2 border-white shadow-sm flex-shrink-0"
@@ -58,8 +55,6 @@ function ColorVariantCard({
         <span className="text-xs font-semibold text-gray-700 truncate">{item.colorName}</span>
         <span className="text-[10px] text-gray-400 font-mono ml-auto">{item.colorHex}</span>
       </div>
-
-      {/* Remove */}
       <button
         type="button"
         onClick={() => onRemove(index)}
@@ -93,9 +88,8 @@ export default function ColorVariantUploader({
     if (!file) return;
     try {
       setUploading(true);
-      const sign = await getUploadSignature("variants");
-      const up = await uploadToCloudinary(file, sign);
-      setDraft((d) => ({ ...d, image: up.secure_url, imageId: up.public_id }));
+      const result = await uploadFile(file, "variants");
+      setDraft((d) => ({ ...d, image: result.url, imageId: result.filePath }));
     } catch {
       alert("Image upload failed");
     } finally {
@@ -113,7 +107,7 @@ export default function ColorVariantUploader({
 
   const handleCancel = async () => {
     if (draft.imageId) {
-      await deleteFromCloudinary(draft.imageId).catch(() => {});
+      await deleteFile(draft.imageId).catch(() => {});
     }
     setDraft({ colorName: "", colorHex: "#000000", image: "", imageId: "" });
     setIsAdding(false);
@@ -122,14 +116,13 @@ export default function ColorVariantUploader({
   const handleRemove = async (index: number) => {
     const item = value[index];
     if (item.imageId) {
-      await deleteFromCloudinary(item.imageId).catch(() => {});
+      await deleteFile(item.imageId).catch(() => {});
     }
     onChange(value.filter((_, i) => i !== index));
   };
 
   return (
     <div className="space-y-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Palette className="w-4 h-4 text-[#167389]" />
@@ -152,7 +145,6 @@ export default function ColorVariantUploader({
         )}
       </div>
 
-      {/* Existing variants grid */}
       {value.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {value.map((item, i) => (
@@ -161,7 +153,6 @@ export default function ColorVariantUploader({
         </div>
       )}
 
-      {/* Empty state */}
       {value.length === 0 && !isAdding && (
         <div
           onClick={() => setIsAdding(true)}
@@ -173,7 +164,6 @@ export default function ColorVariantUploader({
         </div>
       )}
 
-      {/* Add new variant panel */}
       {isAdding && (
         <div className="border-2 border-[#167389]/30 rounded-2xl bg-gradient-to-br from-[#167389]/5 to-white p-4 space-y-4">
           <p className="text-sm font-bold text-gray-700 flex items-center gap-2">
@@ -182,7 +172,6 @@ export default function ColorVariantUploader({
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Left: color name + hex */}
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Color Name *</label>
@@ -214,7 +203,6 @@ export default function ColorVariantUploader({
                 </div>
               </div>
 
-              {/* Preset colors */}
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Quick Presets</label>
                 <div className="flex flex-wrap gap-1.5">
@@ -225,25 +213,26 @@ export default function ColorVariantUploader({
                       title={c.name}
                       onClick={() => setDraft((d) => ({ ...d, colorName: c.name, colorHex: c.hex }))}
                       className="w-6 h-6 rounded-full border-2 border-white shadow hover:scale-110 transition-transform"
-                      style={{ backgroundColor: c.hex, outline: draft.colorHex === c.hex ? "2px solid #167389" : "none", outlineOffset: "2px" }}
+                      style={{
+                        backgroundColor: c.hex,
+                        outline: draft.colorHex === c.hex ? "2px solid #167389" : "none",
+                        outlineOffset: "2px",
+                      }}
                     />
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Right: image upload */}
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Variant Image *
-              </label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Variant Image *</label>
               {draft.image ? (
                 <div className="relative h-36 rounded-xl overflow-hidden border-2 border-[#167389]/30">
                   <Image src={draft.image} alt="variant" fill className="object-cover" sizes="200px" />
                   <button
                     type="button"
                     onClick={() => {
-                      deleteFromCloudinary(draft.imageId).catch(() => {});
+                      deleteFile(draft.imageId).catch(() => {});
                       setDraft((d) => ({ ...d, image: "", imageId: "" }));
                     }}
                     className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition flex items-center gap-1"
@@ -274,7 +263,6 @@ export default function ColorVariantUploader({
             </div>
           </div>
 
-          {/* Preview */}
           {draft.colorName && draft.image && (
             <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#167389]/20">
               <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-100 flex-shrink-0">
@@ -291,7 +279,6 @@ export default function ColorVariantUploader({
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-2 pt-1">
             <button
               type="button"

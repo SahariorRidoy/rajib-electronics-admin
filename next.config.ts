@@ -6,34 +6,19 @@ const nextConfig = {
       {
         protocol: "http",
         hostname: "localhost",
+        port: "5000",
       },
       {
         protocol: "https",
-        hostname: "res.cloudinary.com",
+        hostname: "api.rajibelectronics.com",
       },
       {
         protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "i.imgur.com",
-      },
-      {
-        protocol: "https",
-        hostname: "via.placeholder.com",
-      },
-      {
-        protocol: "https",
-        hostname: "picsum.photos",
-      },
-      {
-        protocol: "https",
-        hostname: "**", // Allow all HTTPS domains
+        hostname: "**",
       },
       {
         protocol: "http",
-        hostname: "**", // Allow all HTTP domains in development
+        hostname: "**",
       },
     ],
     dangerouslyAllowSVG: true,

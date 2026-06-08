@@ -17,7 +17,7 @@ import {
   useGetPublicSettingsQuery,
   type SocialLink,
 } from "@/services/settings.api";
-import { deleteFromCloudinary, getUploadSignature, uploadToCloudinary } from "@/services/uploads";
+import UploadImage, { UploadValue } from "@/components/UploadImage";
 
 const PLATFORM_OPTIONS = [
   "facebook", "youtube", "tiktok", "instagram", "messenger", "whatsapp", "twitter", "linkedin", "other",
@@ -37,7 +37,7 @@ export default function SiteSettingsPage() {
   const [deleteSocialLink] = useDeleteSocialLinkMutation();
 
   const [siteName, setSiteName] = useState("");
-  const [uploading, setUploading] = useState(false);
+
 
   // contact state — seeded from DB on load
   const [phones, setPhones] = useState<string[]>([]);
@@ -73,24 +73,19 @@ export default function SiteSettingsPage() {
   };
 
   // ── Logo ───────────────────────────────────────────────────
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setUploading(true);
-      const sign = await getUploadSignature();
-      const up = await uploadToCloudinary(file, sign);
-      await addLogo({ logoUrl: up.secure_url, logoPublicId: up.public_id });
-      refetchPublic();
-    } catch {
-      toast.error("Upload failed");
-    } finally {
-      setUploading(false);
-      e.target.value = "";
+  const handleUploadLogo = async (value: UploadValue) => {
+    if (value?.url) {
+      try {
+        await addLogo({ logoUrl: value.url, logoPublicId: value.filePath });
+        refetchPublic();
+        toast.success("Logo uploaded");
+      } catch {
+        toast.error("Upload failed");
+      }
     }
   };
 
-  const handleDeleteLogo = async (logoId: string, publicId: string) => {
+  const handleDeleteLogo = async (logoId: string) => {
     toast((t) => (
       <span className="flex items-center gap-3">
         Delete this logo?
@@ -98,7 +93,6 @@ export default function SiteSettingsPage() {
           onClick={async () => {
             toast.dismiss(t.id);
             try {
-              await deleteFromCloudinary(publicId);
               await deleteLogo(logoId);
               refetchPublic();
               toast.success("Logo deleted");
@@ -182,15 +176,15 @@ export default function SiteSettingsPage() {
           <h2 className="text-base font-semibold text-gray-700">
             Logos <span className="text-gray-400 font-normal text-sm">({logos.length}/3)</span>
           </h2>
-          {logos.length < 3 && (
-            <label className="cursor-pointer px-4 py-2 bg-[#167389] text-white text-sm font-medium rounded-xl hover:bg-[#125f73] transition">
-              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading || addingLogo} />
-              {uploading || addingLogo ? "Uploading..." : "+ Upload Logo"}
-            </label>
-          )}
         </div>
         {logos.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No logos uploaded yet.</p>
+          <UploadImage
+            label="Upload Logo"
+            value={null}
+            onChange={handleUploadLogo}
+            disabled={addingLogo}
+            folder="logos"
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {logos.map((logo) => (
@@ -213,7 +207,7 @@ export default function SiteSettingsPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => handleDeleteLogo(logo._id, logo.logoPublicId)}
+                    onClick={() => handleDeleteLogo(logo._id)}
                     className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition"
                   >
                     <Trash2 className="w-3 h-3" /> Delete

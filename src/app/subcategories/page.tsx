@@ -145,7 +145,7 @@ export default function SubcategoriesPage() {
         description: sub.description || "",
         isActive: isActive(sub),
       });
-      setBannerImages((sub.images || []).map((url) => ({ url, publicId: "" })));
+      setBannerImages((sub.images || []).map((url) => ({ url, filePath: "" })));
     } else {
       setEditing(null);
       setFormData({

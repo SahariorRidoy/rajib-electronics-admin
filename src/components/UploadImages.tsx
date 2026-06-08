@@ -3,13 +3,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import { UploadCloud, Trash2 } from "lucide-react";
-import {
-  getUploadSignature,
-  uploadToCloudinary,
-  deleteFromCloudinary,
-} from "@/services/uploads";
+import { uploadFile, deleteFile } from "@/services/uploads";
 
-export type UploadItem = { url: string; publicId: string };
+export type UploadItem = { url: string; filePath: string };
 
 export default function UploadImages({
   label = "Images",
@@ -18,6 +14,7 @@ export default function UploadImages({
   onChange,
   disabled,
   max = 8,
+  folder = "products",
 }: {
   label?: string;
   hint?: string;
@@ -25,6 +22,7 @@ export default function UploadImages({
   onChange: (v: UploadItem[]) => void;
   disabled?: boolean;
   max?: number;
+  folder?: string;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -35,11 +33,10 @@ export default function UploadImages({
 
     setBusy(true);
     try {
-      const sign = await getUploadSignature();
       const next: UploadItem[] = [];
       for (const f of files.slice(0, Math.max(0, max - value.length))) {
-        const up = await uploadToCloudinary(f, sign);
-        next.push({ url: up.secure_url, publicId: up.public_id });
+        const result = await uploadFile(f, folder);
+        next.push({ url: result.url, filePath: result.filePath });
       }
       onChange([...value, ...next]);
     } finally {
@@ -51,7 +48,7 @@ export default function UploadImages({
   const removeAt = async (idx: number) => {
     const it = value[idx];
     try {
-      if (it?.publicId) await deleteFromCloudinary(it.publicId);
+      if (it?.filePath) await deleteFile(it.filePath);
     } catch {
       // ignore delete error
     }
@@ -74,7 +71,7 @@ export default function UploadImages({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {value.map((it, i) => (
           <div
-            key={`${it.publicId || it.url}-${i}`}
+            key={`${it.filePath || it.url}-${i}`}
             className="relative h-32 rounded-xl overflow-hidden border-2 border-emerald-200"
           >
             <Image
@@ -111,7 +108,7 @@ export default function UploadImages({
               <span className="text-sm font-semibold">
                 {busy ? "Uploading..." : "Add images"}
               </span>
-              <span className="text-xs font-medium opacity-70">640 × 480 &middot; 4:3</span>
+              <span className="text-xs font-medium opacity-70">640 × 480 · 4:3</span>
             </div>
           </label>
         )}

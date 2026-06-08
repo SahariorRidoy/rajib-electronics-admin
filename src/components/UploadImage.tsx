@@ -3,15 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import { UploadCloud, Trash2 } from "lucide-react";
-import {
-  getUploadSignature,
-  uploadToCloudinary,
-  deleteFromCloudinary,
-} from "@/services/uploads";
+import { uploadFile, deleteFile } from "@/services/uploads";
 
 export type UploadValue = {
   url: string;
-  publicId: string;
+  filePath: string;
 } | null;
 
 export default function UploadImage({
@@ -20,12 +16,14 @@ export default function UploadImage({
   value,
   onChange,
   disabled,
+  folder,
 }: {
   label?: string;
-  hint?: string; // e.g. "3:1 · 1800×600 px"
+  hint?: string;
   value: UploadValue;
   onChange: (v: UploadValue) => void;
   disabled?: boolean;
+  folder?: string;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -34,9 +32,8 @@ export default function UploadImage({
     if (!file) return;
     try {
       setBusy(true);
-      const sign = await getUploadSignature();
-      const up = await uploadToCloudinary(file, sign);
-      onChange({ url: up.secure_url, publicId: up.public_id });
+      const result = await uploadFile(file, folder);
+      onChange({ url: result.url, filePath: result.filePath });
     } catch {
       alert("Upload failed");
     } finally {
@@ -46,10 +43,10 @@ export default function UploadImage({
   };
 
   const onRemove = async () => {
-    if (!value?.publicId) { onChange(null); return; }
+    if (!value?.filePath) { onChange(null); return; }
     try {
       setBusy(true);
-      await deleteFromCloudinary(value.publicId);
+      await deleteFile(value.filePath);
       onChange(null);
     } catch {
       alert("Delete failed");
@@ -58,7 +55,6 @@ export default function UploadImage({
     }
   };
 
-  // Use 3:1 aspect ratio container when a hint is provided (banner use-case)
   const containerClass = hint
     ? "relative w-full aspect-[3/1] rounded-xl overflow-hidden border-2 border-rose-200"
     : "relative w-full h-48 rounded-xl overflow-hidden border-2 border-rose-200";

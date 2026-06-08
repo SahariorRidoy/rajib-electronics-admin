@@ -3,13 +3,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import { UploadCloud, Trash2 } from "lucide-react";
-import {
-  getUploadSignature,
-  uploadToCloudinary,
-  deleteFromCloudinary,
-} from "@/services/uploads";
+import { uploadFile, deleteFile } from "@/services/uploads";
 
-export type BannerImage = { url: string; publicId: string };
+export type BannerImage = { url: string; filePath: string };
 
 const SLOTS = [
   {
@@ -30,11 +26,13 @@ export default function UploadBannerImages({
   value,
   onChange,
   disabled,
+  folder = "categories",
 }: {
   label?: string;
   value: BannerImage[];
   onChange: (v: BannerImage[]) => void;
   disabled?: boolean;
+  folder?: string;
 }) {
   const [busy, setBusy] = useState<number | null>(null);
 
@@ -43,10 +41,9 @@ export default function UploadBannerImages({
     if (!file) return;
     setBusy(slotIdx);
     try {
-      const sign = await getUploadSignature();
-      const up = await uploadToCloudinary(file, sign);
+      const result = await uploadFile(file, folder);
       const next = [...value];
-      next[slotIdx] = { url: up.secure_url, publicId: up.public_id };
+      next[slotIdx] = { url: result.url, filePath: result.filePath };
       onChange(next);
     } finally {
       setBusy(null);
@@ -57,12 +54,12 @@ export default function UploadBannerImages({
   const removeAt = async (idx: number) => {
     const it = value[idx];
     try {
-      if (it?.publicId) await deleteFromCloudinary(it.publicId);
+      if (it?.filePath) await deleteFile(it.filePath);
     } catch {
       // ignore
     }
     const next = [...value];
-    next[idx] = { url: "", publicId: "" };
+    next[idx] = { url: "", filePath: "" };
     onChange(next);
   };
 

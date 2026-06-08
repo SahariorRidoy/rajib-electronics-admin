@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getUploadSignature, uploadToCloudinary } from "@/services/uploads";
+import { uploadFile, deleteFile } from "@/services/uploads";
 import { useGetBannersQuery, useCreateBannerMutation, useUpdateBannerMutation, useDeleteBannerMutation } from "@/services/banners.api";
 import type { CreateBannerRequest, UpdateBannerRequest } from "@/types/banner";
 
@@ -16,12 +16,11 @@ export const useBanners = () => {
   ) => {
     setUploading(true);
     try {
-      const signature = await getUploadSignature();
-      const uploadResult = await uploadToCloudinary(imageFile, signature);
+      const uploadResult = await uploadFile(imageFile, 'banners');
       
       await createBanner({
         ...bannerData,
-        image: uploadResult.secure_url
+        image: uploadResult.url
       }).unwrap();
       
       await refetch();
@@ -40,9 +39,8 @@ export const useBanners = () => {
       let updateData: UpdateBannerRequest = bannerData;
       
       if (imageFile) {
-        const signature = await getUploadSignature();
-        const uploadResult = await uploadToCloudinary(imageFile, signature);
-        updateData = { ...bannerData, image: uploadResult.secure_url };
+        const uploadResult = await uploadFile(imageFile, 'banners');
+        updateData = { ...bannerData, image: uploadResult.url };
       }
       
       await updateBanner({ id, ...updateData }).unwrap();

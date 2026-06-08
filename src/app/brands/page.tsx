@@ -86,7 +86,7 @@ export default function BrandsPage() {
         description: brand.description || "",
         status: brand.status,
       });
-      setImages(brand.image ? [{ url: brand.image, publicId: "" }] : []);
+      setImages(brand.image ? [{ url: brand.image, filePath: "" }] : []);
     } else {
       setEditingBrand(null);
       setForm({ name: "", slug: "", description: "", status: "ACTIVE" });
@@ -315,7 +315,7 @@ export default function BrandsPage() {
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Brand Logo <span className="text-[#167389] font-semibold">(1:1 · 500×500 px)</span>
                 </label>
-                <UploadImages value={images} onChange={setImages} max={1} />
+              <UploadImages value={images} onChange={setImages} max={1} folder="logos" />
               </div>
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Description</label>
