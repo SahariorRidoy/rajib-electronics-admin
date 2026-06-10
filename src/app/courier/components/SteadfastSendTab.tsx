@@ -9,6 +9,7 @@ import { toast } from "react-hot-toast";
 import { useListOrdersQuery } from "@/services/orders.api";
 import { useSteadfastSendMutation, useSteadfastBulkSendMutation } from "@/services/courier.api";
 import type { Order, OrderStatus } from "@/types/order";
+import { formatAddress } from "@/lib/address";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   PENDING: "bg-amber-100 text-amber-700",
@@ -50,7 +51,7 @@ export default function SteadfastSendTab() {
         o._id.toLowerCase().includes(ql) ||
         o.customer?.name?.toLowerCase().includes(ql) ||
         o.customer?.phone?.includes(ql) ||
-        o.customer?.district?.toLowerCase().includes(ql)
+        formatAddress(o.customer?.address).toLowerCase().includes(ql)
     );
   }, [data, q]);
 
@@ -101,7 +102,7 @@ export default function SteadfastSendTab() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by order ID, name, phone, district..."
+              placeholder="Search by order ID, name, phone, address..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
@@ -183,8 +184,7 @@ export default function SteadfastSendTab() {
           </div>
 
           {filtered.map((o) => {
-            const address = [o.customer.houseOrVillage, o.customer.roadOrPostOffice, o.customer.blockOrThana, o.customer.district]
-              .filter(Boolean).join(", ");
+            const address = formatAddress(o.customer.address);
             return (
               <div
                 key={o._id}

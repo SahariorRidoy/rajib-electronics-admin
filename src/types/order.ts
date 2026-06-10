@@ -22,10 +22,7 @@ export type OrderStatus =
       name: string;
       email?: string;
       phone: string;
-      houseOrVillage?: string;
-      roadOrPostOffice?: string;
-      blockOrThana?: string;
-      district?: string;
+      address?: string;
     };
     lines: OrderLine[];
     totals: { subTotal: number; shipping: number; grandTotal: number };

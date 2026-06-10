@@ -8,6 +8,7 @@ import {
 import { useListOrdersQuery } from "@/services/orders.api";
 import type { Order, OrderStatus } from "@/types/order";
 import PathaoSendModal from "./PathaoSendModal";
+import { formatAddress } from "@/lib/address";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   PENDING: "bg-amber-100 text-amber-700",
@@ -47,7 +48,7 @@ export default function PathaoSendTab() {
         o._id.toLowerCase().includes(ql) ||
         o.customer?.name?.toLowerCase().includes(ql) ||
         o.customer?.phone?.includes(ql) ||
-        o.customer?.district?.toLowerCase().includes(ql)
+        formatAddress(o.customer?.address).toLowerCase().includes(ql)
     );
   }, [data, q]);
 
@@ -134,13 +135,7 @@ export default function PathaoSendTab() {
             </div>
 
             {filtered.map((o) => {
-              const address = [
-                o.customer.houseOrVillage,
-                o.customer.roadOrPostOffice,
-                o.customer.blockOrThana,
-                o.customer.district,
-              ].filter(Boolean).join(", ");
-
+              const address = formatAddress(o.customer.address);
               return (
                 <div key={o._id} className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition p-4 sm:p-5">
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">

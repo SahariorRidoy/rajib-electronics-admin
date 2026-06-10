@@ -7,12 +7,7 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   __v: number;
-  address?: {
-    houseOrVillage?: string;
-    roadOrPostOffice?: string;
-    blockOrThana?: string;
-    district?: string;
-  };
+  address?: string;
   orderCount: number;
   isAutoCreated?: boolean;
 }

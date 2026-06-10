@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useListUsersQuery } from "@/services/users.api";
+import { formatAddress } from "@/lib/address";
 import { Users, Mail, Phone, MapPin, ShoppingBag, ChevronDown, ChevronUp, CheckCircle, XCircle } from "lucide-react";
 
 export default function UsersPage() {
@@ -114,16 +115,7 @@ export default function UsersPage() {
                             <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
                             <div>
                               <p className="text-xs text-gray-500 font-medium">Address</p>
-                              <p className="text-sm text-gray-800">
-                                {[
-                                  user.address.houseOrVillage,
-                                  user.address.roadOrPostOffice,
-                                  user.address.blockOrThana,
-                                  user.address.district,
-                                ]
-                                  .filter(Boolean)
-                                  .join(", ") || "N/A"}
-                              </p>
+                              <p className="text-sm text-gray-800">{formatAddress(user.address)}</p>
                             </div>
                           </div>
                         )}

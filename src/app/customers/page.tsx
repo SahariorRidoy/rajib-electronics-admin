@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useListCustomersQuery, useGetCustomerOrdersQuery } from "@/services/customers.api";
+import { formatAddress } from "@/lib/address";
 import { Users, Mail, Phone, MapPin, ShoppingBag, ChevronDown, ChevronUp, CheckCircle, Search, Package, Calendar, CreditCard, Truck } from "lucide-react";
 import type { User } from "@/types/user";
 
@@ -163,16 +164,7 @@ function CustomerCard({ customer, isExpanded, onToggle }: CustomerCardProps) {
                 <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Address</p>
-                  <p className="text-sm text-gray-800">
-                    {[
-                      customer.address.houseOrVillage,
-                      customer.address.roadOrPostOffice,
-                      customer.address.blockOrThana,
-                      customer.address.district,
-                    ]
-                      .filter(Boolean)
-                      .join(", ") || "N/A"}
-                  </p>
+                  <p className="text-sm text-gray-800">{formatAddress(customer.address)}</p>
                 </div>
               </div>
             )}
@@ -201,7 +193,7 @@ function CustomerCard({ customer, isExpanded, onToggle }: CustomerCardProps) {
                 <p className="text-sm text-gray-500">No orders found</p>
               ) : (
                 <div className="space-y-2">
-                  {(orders as Array<{ _id: string; createdAt?: string; totals?: { grandTotal?: number; subTotal?: number; shipping?: number }; status: string; lines?: Array<{ product?: { title?: string; price?: number }; title: string; price: number; qty: number }>; payment?: { method?: string; status?: string }; customer?: { name?: string; phone?: string; houseOrVillage?: string; district?: string } }>).map((order) => (
+                  {(orders as Array<{ _id: string; createdAt?: string; totals?: { grandTotal?: number; subTotal?: number; shipping?: number }; status: string; lines?: Array<{ product?: { title?: string; price?: number }; title: string; price: number; qty: number }>; payment?: { method?: string; status?: string }; customer?: { name?: string; phone?: string; address?: string } }>).map((order) => (
                     <div key={order._id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                       <div 
                         onClick={() => setExpandedOrderId(expandedOrderId === order._id ? null : order._id)}
@@ -283,10 +275,7 @@ function CustomerCard({ customer, isExpanded, onToggle }: CustomerCardProps) {
                                 <p className="text-xs">{order.customer?.name}</p>
                                 <p className="text-xs text-gray-500">{order.customer?.phone}</p>
                                 <p className="text-xs text-gray-500">
-                                  {[
-                                    order.customer?.houseOrVillage,
-                                    order.customer?.district
-                                  ].filter(Boolean).join(", ")}
+                                  {formatAddress(order.customer?.address)}
                                 </p>
                               </div>
                             </div>

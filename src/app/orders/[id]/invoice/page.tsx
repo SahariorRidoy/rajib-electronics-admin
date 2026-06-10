@@ -5,6 +5,7 @@ import { useGetOrderByIdQuery } from "@/services/orders.api";
 import { useGetProductByIdQuery } from "@/services/products.api";
 import { Printer, ArrowLeft } from "lucide-react";
 import Image from "@/lib/image";
+import { formatAddress } from "@/lib/address";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import PrintSettings, { PrintSize } from "@/components/PrintSettings";
@@ -190,14 +191,7 @@ export default function InvoicePage() {
                 <p className="text-sm text-gray-700">{order.customer.name}</p>
                 <p className="text-sm text-gray-600">{order.customer.phone}</p>
                 <p className="text-sm text-gray-600">
-                  {[
-                    order.customer.houseOrVillage,
-                    order.customer.roadOrPostOffice,
-                    order.customer.blockOrThana,
-                    order.customer.district,
-                  ]
-                    .filter(Boolean)
-                    .join(", ") || "N/A"}
+                  {formatAddress(order.customer.address) || "N/A"}
                 </p>
               </div>
             </div>

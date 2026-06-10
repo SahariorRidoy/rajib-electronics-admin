@@ -23,6 +23,7 @@ import {
   Ban,
 } from "lucide-react";
 import Image from "@/lib/image";
+import { formatAddress } from "@/lib/address";
 import Link from "next/link";
 import { Toaster, toast } from "react-hot-toast";
 import PrintSettings, { PrintSize } from "@/components/PrintSettings";
@@ -731,7 +732,7 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <span className="text-gray-600">Address: <span className="font-semibold text-gray-800">
-                        {[selected.customer.houseOrVillage, selected.customer.roadOrPostOffice, selected.customer.blockOrThana, selected.customer.district].filter(Boolean).join(", ") || "N/A"}
+                        {formatAddress(selected.customer.address) || "N/A"}
                       </span></span>
                     </div>
                   </div>

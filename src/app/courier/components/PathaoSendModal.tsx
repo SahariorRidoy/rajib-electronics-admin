@@ -21,6 +21,7 @@ import {
   type PathaoArea,
 } from "@/services/courier.api";
 import type { Order } from "@/types/order";
+import { formatAddress } from "@/lib/address";
 
 interface Props {
   order: Order;
@@ -222,12 +223,7 @@ export default function PathaoSendModal({ order, onClose, onSuccess }: Props) {
   useEffect(() => { setZoneId(""); setAreaId(""); setPricePlanResult(null); }, [cityId]);
   useEffect(() => { setAreaId(""); setPricePlanResult(null); }, [zoneId]);
 
-  const address = [
-    order.customer.houseOrVillage,
-    order.customer.roadOrPostOffice,
-    order.customer.blockOrThana,
-    order.customer.district,
-  ].filter(Boolean).join(", ");
+  const address = formatAddress(order.customer.address);
 
   const isFormReady = !!storeId && !!cityId && !!zoneId;
 
