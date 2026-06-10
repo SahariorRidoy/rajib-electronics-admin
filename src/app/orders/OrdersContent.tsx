@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ClipboardList,
@@ -31,11 +31,13 @@ import PrintSettings, { PrintSize } from "@/components/PrintSettings";
 import {
   useListOrdersQuery,
   useUpdateOrderStatusMutation,
+  useUpdateOrderLinesMutation,
+  useGetOrderHistoryQuery,
   useDeleteOrderMutation,
 } from "@/services/orders.api";
 import { useGetProductByIdQuery } from "@/services/products.api";
 import { useProcessReturnMutation } from "@/services/returns.api";
-import type { Order, OrderStatus } from "@/types/order";
+import type { Order, OrderEditLog, OrderStatus } from "@/types/order";
 
 /** date → bn-BD */
 const bnDate = (iso?: string) =>
@@ -210,6 +212,76 @@ function ReturnItemDisplay({ item, index, onUpdate, onRemove }: { item: { produc
 }
 
 
+function EditableOrderLineItem({
+  line,
+  onIncrease,
+  onDecrease,
+  onRemove,
+}: {
+  line: { productId: string; qty: number; title: string; price: number; image?: string; color?: string };
+  onIncrease: () => void;
+  onDecrease: () => void;
+  onRemove: () => void;
+}) {
+  const { data: productData } = useGetProductByIdQuery(line.productId);
+  const product = productData?.data;
+  const title = product?.title || line.title || "Product";
+  const price = product?.price || line.price || 0;
+  const image = product?.images?.[0] || product?.image || line.image;
+
+  return (
+    <div className="flex items-center gap-3 p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200">
+      {image ? (
+        <Image
+          src={image}
+          alt={title}
+          width={56}
+          height={56}
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover flex-shrink-0"
+          onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+        />
+      ) : (
+        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-pink-100 flex-shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
+        <h4 className="font-semibold text-gray-800 line-clamp-1 text-xs sm:text-sm">{title}</h4>
+        {line.color && (
+          <p className="text-xs text-gray-500">Color: <span className="font-medium text-gray-700">{line.color}</span></p>
+        )}
+        <p className="text-xs text-gray-500">৳{price} each</p>
+      </div>
+      {/* Qty controls */}
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <button
+          onClick={onDecrease}
+          disabled={line.qty <= 1}
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-pink-100 text-pink-700 font-bold flex items-center justify-center hover:bg-pink-200 disabled:opacity-40 disabled:cursor-not-allowed transition text-base leading-none"
+        >
+          −
+        </button>
+        <span className="w-7 sm:w-8 text-center font-bold text-gray-800 text-sm sm:text-base">{line.qty}</span>
+        <button
+          onClick={onIncrease}
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-pink-100 text-pink-700 font-bold flex items-center justify-center hover:bg-pink-200 transition text-base leading-none"
+        >
+          +
+        </button>
+        <div className="w-px h-5 bg-gray-300 mx-1" />
+        <button
+          onClick={onRemove}
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 hover:text-red-700 transition"
+          title="Remove item"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div className="text-right flex-shrink-0 min-w-[56px]">
+        <p className="text-sm sm:text-base font-bold text-pink-600">৳{price * line.qty}</p>
+      </div>
+    </div>
+  );
+}
+
 function Confirm({
   open,
   title,
@@ -269,17 +341,34 @@ function Confirm({
 export default function OrdersPage() {
   const router = useRouter();
   /** local UI state */
-  const [q, setQ] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
+  const [phoneSearch, setPhoneSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const limit = 10;
 
+  /** debounce phone input → send to server after 600ms */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = phoneInput.trim();
+      setPhoneSearch(trimmed);
+      if (trimmed) setPage(1);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [phoneInput]);
+
   const [selected, setSelected] = useState<Order | null>(null);
   const [openDetails, setOpenDetails] = useState(false);
   const [showPrintSettings, setShowPrintSettings] = useState(false);
   const [printOrderId, setPrintOrderId] = useState<string | null>(null);
+
+  /** line item editing */
+  const [editLines, setEditLines] = useState<Order["lines"]>([]);
+  const [pendingRemoveLine, setPendingRemoveLine] = useState<number | null>(null);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   /** destructive confirms */
   const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
@@ -296,30 +385,83 @@ export default function OrdersPage() {
     status: (statusFilter as Order["status"]) || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
+    search: phoneSearch || undefined,
   });
   const [doUpdate, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
+  const [doUpdateLines, { isLoading: isUpdatingLines }] = useUpdateOrderLinesMutation();
   const [doDelete, { isLoading: isDeleting }] = useDeleteOrderMutation();
+  const { data: historyData, isFetching: isLoadingHistory } = useGetOrderHistoryQuery(
+    selected?._id ?? "",
+    { skip: !selected || !showHistory }
+  );
+  const historyLogs: OrderEditLog[] = historyData?.data ?? [];
   const [processReturn, { isLoading: isProcessingReturn }] = useProcessReturnMutation();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const items: Order[] = data?.data?.items ?? [];
   const total = data?.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  /** client-side search */
-  const filtered = useMemo(() => {
-    const ql = q.trim().toLowerCase();
-    if (!ql) return items;
-    return items.filter(
-      (o) =>
-        o._id.toLowerCase().includes(ql) ||
-        o.customer?.name?.toLowerCase().includes(ql)
-    );
-  }, [items, q]);
-
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /** sync edit lines and reset history panel whenever a different order is opened */
+  useEffect(() => {
+    if (selected) {
+      setEditLines(selected.lines.map((l) => ({ ...l })));
+      setShowHistory(false);
+    }
+  }, [selected?._id]);
+
+  const canEditLines = selected ? !["DELIVERED", "CANCELLED", "RETURNED"].includes(selected.status) : false;
+  const hasLineChanges =
+    editLines.length !== (selected?.lines.length ?? 0) ||
+    editLines.some((el, i) => el.qty !== selected?.lines[i]?.qty);
+
+  const increaseLineQty = (idx: number) => {
+    setEditLines((prev) => prev.map((l, i) => i === idx ? { ...l, qty: l.qty + 1 } : l));
+  };
+
+  const decreaseLineQty = (idx: number) => {
+    setEditLines((prev) => prev.map((l, i) => i === idx && l.qty > 1 ? { ...l, qty: l.qty - 1 } : l));
+  };
+
+  const confirmRemoveLine = () => {
+    if (pendingRemoveLine === null) return;
+    setEditLines((prev) => prev.filter((_, i) => i !== pendingRemoveLine));
+    setPendingRemoveLine(null);
+  };
+
+  /** compute human-readable diff between original and edited lines */
+  const lineDiff = (() => {
+    if (!selected) return [];
+    const diff: { title: string; from: number; to: number; type: "changed" | "removed" }[] = [];
+    for (const orig of selected.lines) {
+      const next = editLines.find((l) => l.productId === orig.productId);
+      if (!next) diff.push({ title: orig.title, from: orig.qty, to: 0, type: "removed" });
+      else if (next.qty !== orig.qty) diff.push({ title: orig.title, from: orig.qty, to: next.qty, type: "changed" });
+    }
+    return diff;
+  })();
+
+  const saveLineChanges = () => {
+    if (!selected || !hasLineChanges) return;
+    setShowSaveConfirm(true);
+  };
+
+  const doSaveLines = async () => {
+    if (!selected) return;
+    setShowSaveConfirm(false);
+    try {
+      const result = await doUpdateLines({ id: selected._id, lines: editLines }).unwrap();
+      toast.success("Items updated successfully");
+      setSelected(result.data);
+      setShowHistory(false); // reset so history refetches on next open
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      toast.error(String(e?.data?.message || e?.data?.code || "Update failed"));
+    }
   };
 
   const askStatusChange = (s: OrderStatus) => {
@@ -475,25 +617,37 @@ export default function OrdersPage() {
           </div>
 
           {/* Filters */}
-          <div className="bg-white rounded-2xl shadow-sm border border-pink-100 p-4 sm:p-6 mb-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-pink-100 p-4 sm:p-6 mb-6 space-y-3">
             <div className="flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch md:items-center">
+              {/* Phone search — left side */}
               <div className="relative flex-1">
-                <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-black" />
+                <Phone className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-[#167389]" />
                 <input
-                  type="text"
-                  placeholder="Search by order ID or customer..."
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition text-sm sm:text-base"
+                  type="tel"
+                  placeholder="Search by phone number..."
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  className="w-full pl-10 sm:pl-12 pr-9 py-2.5 sm:py-3 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition text-sm sm:text-base"
                 />
+                {phoneInput ? (
+                  <button
+                    onClick={() => { setPhoneInput(""); setPhoneSearch(""); setPage(1); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                ) : (
+                  isFetching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#167389] animate-spin" />
+                )}
               </div>
+
               <select
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value as OrderStatus | "");
                   setPage(1);
                 }}
-                className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-[#167389] focus:outline-none focus:ring-2 text-[#167389] focus:ring-pink-300 focus:border-pink-400 transition md:w-64 text-sm sm:text-base"
+                className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-[#167389] focus:outline-none focus:ring-2 text-[#167389] focus:ring-pink-300 focus:border-pink-400 transition md:w-52 text-sm sm:text-base"
               >
                 <option value="">All Statuses</option>
                 <option value="PENDING">Pending</option>
@@ -508,35 +662,52 @@ export default function OrdersPage() {
                   const today = new Date().toISOString().split('T')[0];
                   setStartDate(today);
                   setEndDate(today);
+                  setPage(1);
                 }}
-                className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-[#167389] text-white font-semibold hover:bg-pink-700 transition text-sm sm:text-base whitespace-nowrap"
+                className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-[#167389] text-white font-semibold hover:bg-[#0f5567] transition text-sm sm:text-base whitespace-nowrap"
               >
                 Today
               </button>
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
                 className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition text-sm sm:text-base"
-                placeholder="Start Date"
               />
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
                 className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition text-sm sm:text-base"
-                placeholder="End Date"
               />
               <button
                 onClick={() => {
                   setStartDate("");
                   setEndDate("");
+                  setPage(1);
                 }}
                 className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-red-50 text-red-700 border border-red-200 font-semibold hover:bg-red-100 transition text-sm sm:text-base whitespace-nowrap"
               >
                 Clear
               </button>
             </div>
+
+            {/* Active search result badge */}
+            {phoneSearch && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-[#167389]/10 rounded-xl border border-[#167389]/20 text-sm text-[#167389]">
+                <Search className="w-4 h-4 flex-shrink-0" />
+                <span>
+                  Phone: <span className="font-semibold">{phoneSearch}</span>
+                  {!isFetching && <span className="ml-1 text-gray-500">— {total} order{total !== 1 ? "s" : ""} found</span>}
+                </span>
+                <button
+                  onClick={() => { setPhoneInput(""); setPhoneSearch(""); setPage(1); }}
+                  className="ml-auto text-xs text-red-600 hover:underline whitespace-nowrap font-medium"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
           </div>
 
           {/* List */}
@@ -553,9 +724,9 @@ export default function OrdersPage() {
                 Failed to load orders. Please try again.
               </p>
             </div>
-          ) : filtered.length ? (
+          ) : items.length ? (
             <div className="space-y-4">
-              {filtered.map((o) => (
+              {items.map((o) => (
                 <div
                   key={o._id}
                   className="bg-white rounded-2xl shadow-sm border border-pink-100 hover:shadow-md transition"
@@ -683,7 +854,9 @@ export default function OrdersPage() {
                 No orders found
               </h3>
               <p className="text-sm sm:text-base text-gray-600">
-                Try adjusting your filters or search
+                {phoneSearch
+                  ? `No orders matched phone number "${phoneSearch}"`
+                  : "Try adjusting your filters or search by phone number"}
               </p>
             </div>
           )}
@@ -740,34 +913,75 @@ export default function OrdersPage() {
 
                 {/* Lines */}
                 <div>
-                  <h3 className="text-sm sm:text-base font-bold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
-                    <Package className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600" />
-                    Items
-                  </h3>
-                  <div className="space-y-3">
-                    {selected.lines.map((l, idx) => (
-                      <OrderLineItem key={`${l.productId}-${idx}`} line={l} />
-                    ))}
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <h3 className="text-sm sm:text-base font-bold text-gray-800 flex items-center gap-2">
+                      <Package className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600" />
+                      Items
+                    </h3>
+                    {canEditLines && hasLineChanges && (
+                      <button
+                        onClick={() => setEditLines(selected.lines.map((l) => ({ ...l })))}
+                        className="text-xs text-gray-400 hover:text-gray-600 transition"
+                      >
+                        Discard changes
+                      </button>
+                    )}
                   </div>
+                  <div className="space-y-3">
+                    {canEditLines
+                      ? editLines.map((l, idx) => (
+                          <EditableOrderLineItem
+                            key={`${l.productId}-${idx}`}
+                            line={l}
+                            onIncrease={() => increaseLineQty(idx)}
+                            onDecrease={() => decreaseLineQty(idx)}
+                            onRemove={() => setPendingRemoveLine(idx)}
+                          />
+                        ))
+                      : selected.lines.map((l, idx) => (
+                          <OrderLineItem key={`${l.productId}-${idx}`} line={l} />
+                        ))}
+                  </div>
+
+                  {/* Save / Discard bar */}
+                  {canEditLines && hasLineChanges && (
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => setEditLines(selected.lines.map((l) => ({ ...l })))}
+                        className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm transition"
+                      >
+                        Discard
+                      </button>
+                      <button
+                        onClick={saveLineChanges}
+                        disabled={isUpdatingLines || editLines.length === 0}
+                        className="flex-1 px-4 py-2 rounded-xl bg-[#167389] text-white font-semibold hover:bg-[#0f5567] disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 text-sm transition"
+                      >
+                        {isUpdatingLines && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Save Changes
+                      </button>
+                    </div>
+                  )}
+
                   <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t-2 border-pink-200 space-y-2 text-xs sm:text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal</span>
                       <span className="font-semibold">
-                        ৳{selected.totals.subTotal}
+                        ৳{hasLineChanges
+                          ? editLines.reduce((s, l) => s + l.price * l.qty, 0)
+                          : selected.totals.subTotal}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Shipping</span>
-                      <span className="font-semibold">
-                        ৳{selected.totals.shipping}
-                      </span>
+                      <span className="font-semibold">৳{selected.totals.shipping}</span>
                     </div>
                     <div className="flex justify-between text-sm sm:text-base pt-2 border-t border-pink-100">
-                      <span className="font-bold text-gray-800">
-                        Grand Total
-                      </span>
+                      <span className="font-bold text-gray-800">Grand Total</span>
                       <span className="text-xl sm:text-2xl font-bold text-pink-600">
-                        ৳{selected.totals.grandTotal}
+                        ৳{hasLineChanges
+                          ? editLines.reduce((s, l) => s + l.price * l.qty, 0) + selected.totals.shipping
+                          : selected.totals.grandTotal}
                       </span>
                     </div>
                   </div>
@@ -834,6 +1048,63 @@ export default function OrdersPage() {
                   )}
                 </div>
 
+                {/* Edit history */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowHistory((v) => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      Edit History
+                    </span>
+                    <span className="text-xs text-gray-400">{showHistory ? "Hide" : "Show"}</span>
+                  </button>
+                  {showHistory && (
+                    <div className="border-t border-gray-100 px-4 py-3">
+                      {isLoadingHistory ? (
+                        <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Loading history…
+                        </div>
+                      ) : historyLogs.length === 0 ? (
+                        <p className="text-sm text-gray-400 py-2">No edits recorded yet.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {historyLogs.map((log) => {
+                            const diff: { title: string; from: number; to: number; type: "changed" | "removed" }[] = [];
+                            for (const b of log.before.lines) {
+                              const a = log.after.lines.find((l) => l.productId === b.productId);
+                              if (!a) diff.push({ title: b.title, from: b.qty, to: 0, type: "removed" });
+                              else if (a.qty !== b.qty) diff.push({ title: b.title, from: b.qty, to: a.qty, type: "changed" });
+                            }
+                            return (
+                              <div key={log._id} className="text-xs border border-gray-100 rounded-lg p-3 space-y-1.5">
+                                <p className="text-gray-500 font-medium">
+                                  {new Date(log.createdAt).toLocaleString("en-BD", {
+                                    year: "numeric", month: "short", day: "numeric",
+                                    hour: "2-digit", minute: "2-digit",
+                                  })}
+                                </p>
+                                {diff.map((d, i) => (
+                                  <p key={i} className={d.type === "removed" ? "text-red-600" : "text-amber-700"}>
+                                    {d.type === "removed"
+                                      ? `• ${d.title} — removed`
+                                      : `• ${d.title} — qty ${d.from} → ${d.to}`}
+                                  </p>
+                                ))}
+                                <p className="text-gray-500 pt-1 border-t border-gray-100">
+                                  Total: ৳{log.before.totals.grandTotal} → ৳{log.after.totals.grandTotal}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Delete order */}
                 <div className="flex items-center justify-between gap-3">
                   <button
@@ -856,6 +1127,66 @@ export default function OrdersPage() {
             </div>
 
             {/* Final confirms */}
+            {/* Save lines confirmation — custom modal with diff list */}
+            {showSaveConfirm && (
+              <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-pink-100">
+                  <div className="px-5 pt-5 pb-3">
+                    <h3 className="text-base font-semibold text-gray-900 mb-1">Save item changes?</h3>
+                    <p className="text-xs text-gray-500 mb-3">The following changes will be saved and stock will be adjusted automatically.</p>
+                    <div className="space-y-1.5 mb-3">
+                      {lineDiff.map((d, i) => (
+                        <div key={i} className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${d.type === "removed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}>
+                          {d.type === "removed" ? (
+                            <><Trash2 className="w-3.5 h-3.5 flex-shrink-0" /><span><span className="font-semibold">{d.title}</span> — removed from order</span></>
+                          ) : (
+                            <><AlertCircle className="w-3.5 h-3.5 flex-shrink-0" /><span><span className="font-semibold">{d.title}</span> — qty {d.from} → {d.to}</span></>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-600 px-1">
+                      <span>New total</span>
+                      <span className="font-bold text-gray-800">
+                        ৳{editLines.reduce((s, l) => s + l.price * l.qty, 0) + (selected?.totals.shipping ?? 0)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 px-5 pb-5 pt-2">
+                    <button
+                      onClick={() => setShowSaveConfirm(false)}
+                      className="flex-1 px-4 py-2 rounded-xl border border-pink-200 text-gray-700 font-medium hover:bg-pink-50 text-sm transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={doSaveLines}
+                      disabled={isUpdatingLines}
+                      className="flex-1 px-4 py-2 rounded-xl bg-[#167389] text-white font-semibold hover:bg-[#0f5567] disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm transition"
+                    >
+                      {isUpdatingLines && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Confirm & Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Confirm
+              open={pendingRemoveLine !== null}
+              title="Remove this item?"
+              subtitle={
+                pendingRemoveLine !== null
+                  ? `"${editLines[pendingRemoveLine]?.title}" will be removed from the order.`
+                  : undefined
+              }
+              confirmLabel="Remove"
+              tone="danger"
+              loading={false}
+              onCancel={() => setPendingRemoveLine(null)}
+              onConfirm={confirmRemoveLine}
+            />
+
             <Confirm
               open={!!pendingStatus}
               title={

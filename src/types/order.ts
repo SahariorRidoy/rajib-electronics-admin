@@ -48,4 +48,12 @@ export type OrderStatus =
 
   export type UpdateOrderDTO = {
     status: OrderStatus;
-  }
+  };
+
+  export type OrderEditLog = {
+    _id: string;
+    orderId: string;
+    before: { lines: OrderLine[]; totals: Order["totals"] };
+    after: { lines: OrderLine[]; totals: Order["totals"] };
+    createdAt: string;
+  };
