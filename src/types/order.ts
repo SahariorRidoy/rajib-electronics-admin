@@ -29,6 +29,7 @@ export type OrderStatus =
     status: OrderStatus;
     payment?: { method: string; status: string; transactionId?: string };
     notes?: string;
+    deliveryZone?: "inside" | "outside";
     courier?: {
       provider: "steadfast" | "pathao";
       consignmentId: string;
@@ -53,7 +54,18 @@ export type OrderStatus =
   export type OrderEditLog = {
     _id: string;
     orderId: string;
-    before: { lines: OrderLine[]; totals: Order["totals"] };
-    after: { lines: OrderLine[]; totals: Order["totals"] };
+    editType: "lines" | "customer" | "shipping" | "notes" | "price";
+    before: {
+      lines?: OrderLine[];
+      totals?: Order["totals"];
+      customer?: { name?: string; phone?: string; address?: string };
+      notes?: string;
+    };
+    after: {
+      lines?: OrderLine[];
+      totals?: Order["totals"];
+      customer?: { name?: string; phone?: string; address?: string };
+      notes?: string;
+    };
     createdAt: string;
   };

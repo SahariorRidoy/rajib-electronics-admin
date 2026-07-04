@@ -3,6 +3,13 @@ import { baseQuery } from "./base";
 import type { ApiOk, Paginated } from "@/types";
 import type { Order, OrderLine, OrderEditLog, UpdateOrderDTO } from "@/types/order";
 
+export type UpdateOrderDetailsDTO = {
+  customer?: { name?: string; phone?: string; address?: string };
+  lines?: OrderLine[];
+  totals?: { subTotal?: number; shipping?: number; grandTotal?: number };
+  notes?: string;
+};
+
 export const ordersApi = createApi({
   reducerPath: "ordersApi",
   baseQuery,
@@ -77,6 +84,18 @@ export const ordersApi = createApi({
       providesTags: (_r, _e, id) => [{ type: "Orders", id: `history-${id}` }],
     }),
 
+    updateOrderDetails: builder.mutation<ApiOk<Order>, { id: string; body: UpdateOrderDetailsDTO }>({
+      query: ({ id, body }) => ({
+        url: `/orders/${id}/details`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (r) =>
+        r
+          ? [{ type: "Orders", id: r.data._id }, { type: "Orders", id: "LIST" }]
+          : [{ type: "Orders", id: "LIST" }],
+    }),
+
     deleteOrder: builder.mutation<ApiOk<{ id: string }>, string>({
       query: (id) => ({ url: `/orders/${id}`, method: "DELETE" }),
       invalidatesTags: [{ type: "Orders", id: "LIST" }],
@@ -89,6 +108,7 @@ export const {
   useGetOrderQuery,
   useUpdateOrderStatusMutation,
   useUpdateOrderLinesMutation,
+  useUpdateOrderDetailsMutation,
   useGetOrderHistoryQuery,
   useDeleteOrderMutation,
 } = ordersApi;

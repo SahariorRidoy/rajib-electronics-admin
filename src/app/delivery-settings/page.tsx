@@ -14,14 +14,16 @@ export default function DeliverySettingsPage() {
   const [updateSettings, { isLoading: isUpdating }] = useUpdateDeliverySettingsMutation();
 
   const [threshold, setThreshold] = useState(0);
-  const [charge, setCharge] = useState(0);
+  const [insideCharge, setInsideCharge] = useState(80);
+  const [outsideCharge, setOutsideCharge] = useState(120);
   const [isActive, setIsActive] = useState(true);
   const [settingsExist, setSettingsExist] = useState(false);
 
   useEffect(() => {
     if (data?.data) {
       setThreshold(data.data.freeDeliveryThreshold);
-      setCharge(data.data.deliveryCharge);
+      setInsideCharge(data.data.insideDhakaCharge);
+      setOutsideCharge(data.data.outsideDhakaCharge);
       setIsActive(data.data.isActive);
       setSettingsExist(true);
     }
@@ -29,50 +31,42 @@ export default function DeliverySettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (threshold < 0 || charge < 0) {
+    if (threshold < 0 || insideCharge < 0 || outsideCharge < 0) {
       toast.error("Values must be greater than or equal to 0");
       return;
     }
-
     try {
       const payload = {
         freeDeliveryThreshold: threshold,
-        deliveryCharge: charge,
+        insideDhakaCharge: insideCharge,
+        outsideDhakaCharge: outsideCharge,
         isActive,
       };
-
       const result = settingsExist
         ? await updateSettings(payload).unwrap()
         : await createSettings(payload).unwrap();
-
       if (result.ok) {
-        toast.success(`Delivery settings ${settingsExist ? 'updated' : 'created'} successfully!`);
+        toast.success(`Delivery settings ${settingsExist ? "updated" : "created"} successfully!`);
         setSettingsExist(true);
       } else {
         toast.error(result.message || "Failed to save settings");
       }
-    } catch (error) {
-      console.error("Save failed:", error);
+    } catch {
       toast.error("Failed to save settings. Please try again.");
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleString("en-US", {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit",
     });
-  };
 
   if (isLoading) {
     return (
       <Page title="Delivery Settings">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600" />
         </div>
       </Page>
     );
@@ -89,7 +83,8 @@ export default function DeliverySettingsPage() {
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Dashboard</span>
       </button>
-      <div className="max-w-2xl mx-auto">
+
+      <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-cyan-100 rounded-lg">
@@ -116,6 +111,7 @@ export default function DeliverySettingsPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Free Delivery Threshold */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Free Delivery Threshold (BDT) If Order:
@@ -138,28 +134,54 @@ export default function DeliverySettingsPage() {
               <p className="mt-1 text-xs text-gray-500">Orders above this amount get free delivery</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Delivery Charge (BDT)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-400 font-semibold">৳</span>
+            {/* Inside / Outside Dhaka charges side by side */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Inside Dhaka Charge (BDT)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-400 font-semibold">৳</span>
+                  </div>
+                  <input
+                    type="number"
+                    value={insideCharge}
+                    onChange={(e) => setInsideCharge(Number(e.target.value))}
+                    min="0"
+                    step="1"
+                    required
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 transition"
+                    placeholder="60"
+                  />
                 </div>
-                <input
-                  type="number"
-                  value={charge}
-                  onChange={(e) => setCharge(Number(e.target.value))}
-                  min="0"
-                  step="1"
-                  required
-                  className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 transition"
-                  placeholder="50"
-                />
+                <p className="mt-1 text-xs text-gray-500">Delivery charge within Dhaka city</p>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Charge applied to orders below threshold</p>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Outside Dhaka Charge (BDT)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-400 font-semibold">৳</span>
+                  </div>
+                  <input
+                    type="number"
+                    value={outsideCharge}
+                    onChange={(e) => setOutsideCharge(Number(e.target.value))}
+                    min="0"
+                    step="1"
+                    required
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 transition"
+                    placeholder="120"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Delivery charge outside Dhaka (default)</p>
+              </div>
             </div>
 
+            {/* Active toggle */}
             <div>
               <label className="flex items-center gap-3 cursor-pointer group">
                 <input
@@ -177,18 +199,19 @@ export default function DeliverySettingsPage() {
               </label>
             </div>
 
+            {/* Info box */}
             <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-cyan-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-cyan-800">
+                <div className="text-sm text-cyan-800 space-y-1">
                   <p className="font-semibold mb-1">Current Configuration:</p>
                   <p>
-                    Orders more than<span className="font-bold">≥ ৳{threshold}</span> get{" "}
+                    Orders <span className="font-bold">≥ ৳{threshold}</span> get{" "}
                     <span className="font-bold text-green-600">FREE delivery</span>.
                   </p>
                   <p>
-                    Orders less than <span className="font-bold">≥ ৳{threshold}</span> need delivery charge{" "}
-                    <span className="font-bold">৳{charge}</span>.
+                    Inside Dhaka: <span className="font-bold">৳{insideCharge}</span> &nbsp;|&nbsp;
+                    Outside Dhaka: <span className="font-bold">৳{outsideCharge}</span>
                   </p>
                 </div>
               </div>
@@ -207,7 +230,7 @@ export default function DeliverySettingsPage() {
               ) : (
                 <>
                   <Truck className="w-5 h-5" />
-                  <span>{settingsExist ? 'Update' : 'Create'} Settings</span>
+                  <span>{settingsExist ? "Update" : "Create"} Settings</span>
                 </>
               )}
             </button>

@@ -1,7 +1,8 @@
 export type DeliverySettings = {
   _id: string;
   freeDeliveryThreshold: number;
-  deliveryCharge: number;
+  insideDhakaCharge: number;
+  outsideDhakaCharge: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -16,6 +17,7 @@ export type DeliverySettingsResponse = {
 
 export type UpdateDeliverySettingsDTO = {
   freeDeliveryThreshold: number;
-  deliveryCharge: number;
+  insideDhakaCharge: number;
+  outsideDhakaCharge: number;
   isActive: boolean;
 };
