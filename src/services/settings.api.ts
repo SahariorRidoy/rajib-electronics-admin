@@ -23,6 +23,7 @@ export interface ContactInfo {
 export interface SiteSettings {
   _id: string;
   siteName: string;
+  hotline: string;
   logos: Logo[];
   contactInfo: ContactInfo;
   socialLinks: SocialLink[];
@@ -53,6 +54,11 @@ export const settingsApi = createApi({
     }),
     updateSiteName: builder.mutation<SiteSettings, { siteName: string }>({
       query: (body) => ({ url: "/admin/settings", method: "PATCH", body }),
+      transformResponse: (res: { ok: boolean; data: SiteSettings }) => res.data,
+      invalidatesTags: ["Settings"],
+    }),
+    updateHotline: builder.mutation<SiteSettings, { hotline: string }>({
+      query: (body) => ({ url: "/admin/settings/hotline", method: "PATCH", body }),
       transformResponse: (res: { ok: boolean; data: SiteSettings }) => res.data,
       invalidatesTags: ["Settings"],
     }),
@@ -97,6 +103,7 @@ export const settingsApi = createApi({
 export const {
   useGetSettingsQuery,
   useUpdateSiteNameMutation,
+  useUpdateHotlineMutation,
   useAddLogoMutation,
   useActivateLogoMutation,
   useDeleteLogoMutation,

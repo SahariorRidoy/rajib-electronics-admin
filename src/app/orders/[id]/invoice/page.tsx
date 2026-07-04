@@ -69,6 +69,7 @@ export default function InvoicePage() {
   const { data: settings } = useGetPublicSettingsQuery();
   const brand = settings?.siteName ?? "Rajib Electronics";
   const activeLogo = settings?.logos.find((l) => l.isActive);
+  const hotline = settings?.hotline ?? "";
 
   useEffect(() => {
     if (sizeParam) {
@@ -244,7 +245,7 @@ export default function InvoicePage() {
             <div className="w-full print-footer-left">
               <p className="text-sm text-gray-600 print-thank-you">Thank you for your order!</p>
               <p className="text-sm text-gray-500 mt-1 print-contact">
-                Contact: {process.env.NEXT_PUBLIC_HOTLINE || "01700000000"}
+                Contact: {hotline}
               </p>
             </div>
           </div>
