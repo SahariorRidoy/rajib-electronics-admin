@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   Send, Search, User, Phone, Package, Loader2, AlertCircle,
   CheckSquare, Square, MapPin, Calendar, CreditCard, RefreshCw,
@@ -33,6 +33,7 @@ export default function SteadfastSendTab() {
   const { data, isLoading, isFetching, error, refetch } = useListOrdersQuery({
     page, limit,
     status: (statusFilter as Order["status"]) || undefined,
+    search: q.trim() || undefined,
   });
 
   const [singleSend, { isLoading: isSending }] = useSteadfastSendMutation();
@@ -41,19 +42,7 @@ export default function SteadfastSendTab() {
   const total = data?.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  const filtered = useMemo(() => {
-    const items: Order[] = data?.data?.items ?? [];
-    const eligible = items.filter((o) => !o.courier?.consignmentId);
-    const ql = q.trim().toLowerCase();
-    if (!ql) return eligible;
-    return eligible.filter(
-      (o) =>
-        o._id.toLowerCase().includes(ql) ||
-        o.customer?.name?.toLowerCase().includes(ql) ||
-        o.customer?.phone?.includes(ql) ||
-        formatAddress(o.customer?.address).toLowerCase().includes(ql)
-    );
-  }, [data, q]);
+  const filtered = (data?.data?.items ?? []).filter((o) => !o.courier?.consignmentId);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -104,7 +93,7 @@ export default function SteadfastSendTab() {
               type="text"
               placeholder="Search by order ID, name, phone, address..."
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => { setQ(e.target.value); setPage(1); }}
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
             />
           </div>

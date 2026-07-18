@@ -22,6 +22,8 @@ import {
   ArrowLeft,
   Ban,
   Pencil,
+  Copy,
+  PhoneCall,
 } from "lucide-react";
 import Image from "@/lib/image";
 import Link from "next/link";
@@ -899,11 +901,26 @@ export default function OrdersPage() {
                               {o.customer.name}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
-                            <span className="text-gray-700">
-                              {o.customer.phone}
-                            </span>
+                            <span className="text-gray-700 font-medium">{o.customer.phone}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(o.customer.phone); toast.success("Phone number copied!"); }}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition text-xs font-medium"
+                              title="Copy phone number"
+                            >
+                              <Copy className="w-3 h-3" />
+                              <span>Copy</span>
+                            </button>
+                            <a
+                              href={`tel:${o.customer.phone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-400 hover:bg-green-500 text-gray-700 hover:text-gray-900 transition text-xs font-medium"
+                              title="Call customer"
+                            >
+                              <PhoneCall className="w-3 h-3" />
+                              <span>Call Now</span>
+                            </a>
                           </div>
                           <div className="flex items-center gap-2">
                             <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
