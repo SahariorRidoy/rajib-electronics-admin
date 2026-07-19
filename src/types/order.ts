@@ -29,6 +29,7 @@ export type OrderStatus =
     status: OrderStatus;
     payment?: { method: string; status: string; transactionId?: string };
     notes?: string;
+    adminNotes?: Array<{ text: string; createdAt: string }>;
     deliveryZone?: "inside" | "outside";
     courier?: {
       provider: "steadfast" | "pathao";

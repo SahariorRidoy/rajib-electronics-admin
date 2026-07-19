@@ -100,6 +100,29 @@ export const ordersApi = createApi({
       query: (id) => ({ url: `/orders/${id}`, method: "DELETE" }),
       invalidatesTags: [{ type: "Orders", id: "LIST" }],
     }),
+
+    addOrderNote: builder.mutation<ApiOk<Order>, { id: string; text: string }>({
+      query: ({ id, text }) => ({
+        url: `/orders/${id}/notes`,
+        method: "POST",
+        body: { text },
+      }),
+      invalidatesTags: (r) =>
+        r
+          ? [{ type: "Orders", id: r.data._id }, { type: "Orders", id: "LIST" }]
+          : [{ type: "Orders", id: "LIST" }],
+    }),
+
+    deleteOrderNote: builder.mutation<ApiOk<Order>, { id: string; noteIndex: number }>({
+      query: ({ id, noteIndex }) => ({
+        url: `/orders/${id}/notes/${noteIndex}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (r) =>
+        r
+          ? [{ type: "Orders", id: r.data._id }, { type: "Orders", id: "LIST" }]
+          : [{ type: "Orders", id: "LIST" }],
+    }),
   }),
 });
 
@@ -111,6 +134,8 @@ export const {
   useUpdateOrderDetailsMutation,
   useGetOrderHistoryQuery,
   useDeleteOrderMutation,
+  useAddOrderNoteMutation,
+  useDeleteOrderNoteMutation,
 } = ordersApi;
 
 export const useGetOrderByIdQuery = ordersApi.endpoints.getOrder.useQuery;

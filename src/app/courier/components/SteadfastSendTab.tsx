@@ -10,6 +10,7 @@ import { useListOrdersQuery } from "@/services/orders.api";
 import { useSteadfastSendMutation, useSteadfastBulkSendMutation } from "@/services/courier.api";
 import type { Order, OrderStatus } from "@/types/order";
 import { formatAddress } from "@/lib/address";
+import BulkSendPdfModal from "./BulkSendPdfModal";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   PENDING: "bg-amber-100 text-amber-700",
@@ -28,6 +29,9 @@ export default function SteadfastSendTab() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pdfOrders, setPdfOrders] = useState<Order[] | null>(null);
+  const [noteModal, setNoteModal] = useState<{ orderId: string } | null>(null);
+  const [noteText, setNoteText] = useState("");
   const limit = 20;
 
   const { data, isLoading, isFetching, error, refetch } = useListOrdersQuery({
@@ -56,10 +60,16 @@ export default function SteadfastSendTab() {
     setSelected(selected.size === filtered.length ? new Set() : new Set(filtered.map((o) => o._id)));
   };
 
-  const handleSingle = async (orderId: string) => {
+  const openNoteModal = (orderId: string) => {
+    setNoteText("");
+    setNoteModal({ orderId });
+  };
+
+  const handleSingle = async (orderId: string, note?: string) => {
     try {
-      await singleSend(orderId).unwrap();
+      await singleSend({ orderId, note: note?.trim() || undefined }).unwrap();
       toast.success("Sent to Steadfast!");
+      setNoteModal(null);
       refetch();
     } catch (e: unknown) {
       const err = e as { data?: { message?: string; code?: string; data?: { message?: string } } };
@@ -70,11 +80,13 @@ export default function SteadfastSendTab() {
 
   const handleBulk = async () => {
     if (!selected.size) return;
+    const sentOrders = (data?.data?.items ?? []).filter((o) => selected.has(o._id));
     try {
       await bulkSend(Array.from(selected)).unwrap();
       toast.success(`${selected.size} orders sent to Steadfast!`);
       setSelected(new Set());
       refetch();
+      setPdfOrders(sentOrders);
     } catch (e: unknown) {
       const err = e as { data?: { message?: string; code?: string; data?: { message?: string } } };
       const msg = err?.data?.message || err?.data?.data?.message || err?.data?.code || "Bulk send failed";
@@ -83,6 +95,43 @@ export default function SteadfastSendTab() {
   };
 
   return (
+    <>
+    {/* Note modal for single send */}
+    {noteModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+          <h3 className="text-base font-bold text-gray-900 mb-1">Send to Steadfast</h3>
+          <p className="text-xs text-gray-500 mb-4">Optionally add a note for the courier (e.g. fragile, call before delivery).</p>
+          <textarea
+            autoFocus
+            rows={3}
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Note for courier (optional)..."
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 resize-none"
+          />
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              onClick={() => setNoteModal(null)}
+              className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => handleSingle(noteModal.orderId, noteText)}
+              disabled={isSending}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition"
+            >
+              {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Confirm Send
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    {pdfOrders && (
+      <BulkSendPdfModal orders={pdfOrders} onClose={() => setPdfOrders(null)} />
+    )}
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
@@ -252,7 +301,7 @@ export default function SteadfastSendTab() {
                             <p className="text-base font-bold text-[#167389]">৳{o.totals.grandTotal}</p>
                           </div>
                           <button
-                            onClick={() => handleSingle(o._id)}
+                            onClick={() => openNoteModal(o._id)}
                             disabled={isSending}
                             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition shadow-sm"
                           >
@@ -284,5 +333,6 @@ export default function SteadfastSendTab() {
         </div>
       )}
     </div>
+    </>
   );
 }

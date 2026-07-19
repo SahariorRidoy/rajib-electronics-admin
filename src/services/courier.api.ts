@@ -71,10 +71,11 @@ export const courierApi = createApi({
       query: () => "/admin/courier/steadfast/balance",
     }),
 
-    steadfastSend: b.mutation<{ ok: boolean; data: unknown }, string>({
-      query: (orderId) => ({
+    steadfastSend: b.mutation<{ ok: boolean; data: unknown }, { orderId: string; note?: string }>({
+      query: ({ orderId, note }) => ({
         url: `/admin/courier/steadfast/send/${orderId}`,
         method: "POST",
+        body: { note },
       }),
       invalidatesTags: ["Shipments"],
     }),

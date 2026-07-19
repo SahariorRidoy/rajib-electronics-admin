@@ -37,6 +37,8 @@ import {
   useUpdateOrderDetailsMutation,
   useGetOrderHistoryQuery,
   useDeleteOrderMutation,
+  useAddOrderNoteMutation,
+  useDeleteOrderNoteMutation,
 } from "@/services/orders.api";
 import { useGetProductByIdQuery } from "@/services/products.api";
 import { useProcessReturnMutation } from "@/services/returns.api";
@@ -107,7 +109,7 @@ function StatusBadge({ status }: { status: OrderStatus }) {
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs font-semibold ${s.bg} ${s.text}`}
     >
       <I className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-      <span className="hidden xs:inline">{s.label}</span>
+      <span>{s.label}</span>
     </span>
   );
 }
@@ -418,6 +420,7 @@ export default function OrdersPage() {
   const [editCustomer, setEditCustomer] = useState({ name: "", phone: "", address: "" });
   const [editShipping, setEditShipping] = useState(0);
   const [editNotes, setEditNotes] = useState("");
+  const [newNote, setNewNote] = useState("");
   const [editingCustomer, setEditingCustomer] = useState(false);
   const [editingShipping, setEditingShipping] = useState(false);
   const [editingPriceIdx, setEditingPriceIdx] = useState<number | null>(null);
@@ -426,6 +429,7 @@ export default function OrdersPage() {
   /** destructive confirms */
   const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [pendingDeleteNote, setPendingDeleteNote] = useState<number | null>(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [returnItems, setReturnItems] = useState<Array<{ productId: string; title: string; maxQty: number; qty: number; image?: string }>>([]);
   const [returnReason, setReturnReason] = useState("");
@@ -444,6 +448,8 @@ export default function OrdersPage() {
   const [doUpdateLines, { isLoading: isUpdatingLines }] = useUpdateOrderLinesMutation();
   const [doUpdateDetails, { isLoading: isUpdatingDetails }] = useUpdateOrderDetailsMutation();
   const [doDelete, { isLoading: isDeleting }] = useDeleteOrderMutation();
+  const [addNote, { isLoading: isAddingNote }] = useAddOrderNoteMutation();
+  const [deleteNote, { isLoading: isDeletingNote }] = useDeleteOrderNoteMutation();
   const { data: historyData, isFetching: isLoadingHistory } = useGetOrderHistoryQuery(
     selected?._id ?? "",
     { skip: !selected || !showHistory }
@@ -471,6 +477,7 @@ export default function OrdersPage() {
       });
       setEditShipping(selected.totals.shipping);
       setEditNotes(selected.notes ?? "");
+      setNewNote("");
       setEditingCustomer(false);
       setEditingShipping(false);
       setEditingPriceIdx(null);
@@ -599,6 +606,33 @@ export default function OrdersPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       toast.error(String(e?.data?.message || e?.data?.code || "Update failed"));
+    }
+  };
+
+  const doAddNote = async () => {
+    if (!selected || !newNote.trim()) return;
+    try {
+      const result = await addNote({ id: selected._id, text: newNote.trim() }).unwrap();
+      toast.success("Note added");
+      setSelected(result.data);
+      setNewNote("");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      toast.error(String(e?.data?.message || "Failed to add note"));
+    }
+  };
+
+  const doDeleteNote = async () => {
+    if (!selected || pendingDeleteNote === null) return;
+    try {
+      const result = await deleteNote({ id: selected._id, noteIndex: pendingDeleteNote }).unwrap();
+      toast.success("Note deleted");
+      setSelected(result.data);
+      setPendingDeleteNote(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      toast.error(String(e?.data?.message || "Failed to delete note"));
+      setPendingDeleteNote(null);
     }
   };
 
@@ -889,24 +923,28 @@ export default function OrdersPage() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 sm:gap-3 mb-3 flex-wrap">
-                          <h3 className="text-base sm:text-lg lg:text-xl font-bold text-[#167389] break-all">
+                          <h3 className="text-sm sm:text-md font-bold text-[#167389] break-all">
                             {o._id}
                           </h3>
                           <StatusBadge status={o.status} />
+                          <span className="flex items-center gap-1 text-sm sm:text-sm text-gray-600 font-normal">
+                            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+                            {bnDate(o.createdAt)}
+                          </span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 text-xs sm:text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 text-sm sm:text-base">
                           <div className="flex items-center gap-2 min-w-0">
-                            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
-                            <span className="text-gray-700 truncate">
+                            <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 shrink-0" />
+                            <span className="text-gray-800 font-semibold truncate">
                               {o.customer.name}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
-                            <span className="text-gray-700 font-medium">{o.customer.phone}</span>
+                          <div className="flex items-center gap-2 flex-nowrap">
+                            <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 shrink-0" />
+                            <span className="text-gray-800 font-bold whitespace-nowrap">{o.customer.phone}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(o.customer.phone); toast.success("Phone number copied!"); }}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition text-xs font-medium"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition text-xs font-medium whitespace-nowrap shrink-0"
                               title="Copy phone number"
                             >
                               <Copy className="w-3 h-3" />
@@ -915,32 +953,19 @@ export default function OrdersPage() {
                             <a
                               href={`tel:${o.customer.phone}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-400 hover:bg-green-500 text-gray-700 hover:text-gray-900 transition text-xs font-medium"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-400 hover:bg-green-500 text-gray-700 hover:text-gray-900 transition text-xs font-medium whitespace-nowrap shrink-0"
                               title="Call customer"
                             >
                               <PhoneCall className="w-3 h-3" />
                               <span>Call Now</span>
                             </a>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
-                            <span className="text-gray-700 truncate">
-                              {bnDate(o.createdAt)}
-                            </span>
-                          </div>
+
                         </div>
                       </div>
 
                       {/* Amount + actions */}
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                        <div className="text-left sm:text-right">
-                          <p className="text-xs text-gray-500 mb-1">
-                            Grand Total
-                          </p>
-                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-[#167389]">
-                            ৳{o.totals.grandTotal}
-                          </p>
-                        </div>
                         <div className="flex gap-2">
                           <Link
                             href={`/orders/${o._id}/invoice`}
@@ -976,32 +1001,34 @@ export default function OrdersPage() {
                     <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
                       <div className="flex items-center gap-2 flex-wrap">
                         {o.lines.map((line, idx) => (
-                          <div key={idx} className="relative flex-shrink-0" title={`${line.title} × ${line.qty}`}>
+                          <div key={idx} className="relative flex-shrink-0 flex items-center gap-2" title={`${line.title} × ${line.qty}`}>
                             {line.image ? (
                               <Image
                                 src={line.image}
                                 alt={line.title}
                                 width={48}
                                 height={48}
-                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-80 transition"
+                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-80 transition flex-shrink-0"
                                 onClick={() => setLightboxSrc(line.image!)}
                                 onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
                               />
                             ) : (
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-pink-100 border border-gray-200 flex items-center justify-center">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-pink-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
                                 <Package className="w-4 h-4 text-pink-300" />
                               </div>
                             )}
                             {line.qty > 1 && (
-                              <span className="absolute -top-1 -right-1 bg-[#167389] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                              <span className="absolute -top-1 left-7 sm:left-9 bg-[#167389] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
                                 {line.qty}
                               </span>
                             )}
+                            <p className="text-xs text-gray-700 font-medium leading-tight w-48">{line.title}</p>
                           </div>
                         ))}
-                        <div className="ml-auto text-right text-xs text-gray-500">
-                          <p>Subtotal ৳{o.totals.subTotal}</p>
-                          <p>Shipping Charge৳{o.totals.shipping}{o.deliveryZone ? ` (${o.deliveryZone === "inside" ? "Inside Dhaka" : "Outside Dhaka"})` : ""}</p>
+                        <div className="ml-auto text-right">
+                          <p className="text-sm font-semibold text-gray-700">Subtotal ৳{o.totals.subTotal}</p>
+                          <p className="text-sm font-semibold text-gray-700">Shipping ৳{o.totals.shipping}{o.deliveryZone ? ` (${o.deliveryZone === "inside" ? "Inside Dhaka" : "Outside Dhaka"})` : ""}</p>
+                          <p className="text-base font-bold text-[#167389] mt-1">Grand Total ৳{o.totals.grandTotal}</p>
                         </div>
                       </div>
                     </div>
@@ -1253,34 +1280,49 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* Notes */}
+                  {/* Admin Notes */}
                   <div className="mt-3">
-                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Admin Note</label>
-                    <textarea
-                      value={editNotes}
-                      onChange={(e) => setEditNotes(e.target.value)}
-                      rows={2}
-                      placeholder="Add a note about this order..."
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
-                    />
-                    {hasNotesChanges && (
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          onClick={() => setEditNotes(selected.notes ?? "")}
-                          className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs transition"
-                        >
-                          Discard
-                        </button>
-                        <button
-                          onClick={doSaveNotes}
-                          disabled={isUpdatingDetails}
-                          className="flex-1 px-3 py-1.5 rounded-lg bg-[#167389] text-white font-semibold hover:bg-[#0f5567] disabled:opacity-50 inline-flex items-center justify-center gap-1.5 text-xs transition"
-                        >
-                          {isUpdatingDetails && <Loader2 className="w-3 h-3 animate-spin" />}
-                          Save Note
-                        </button>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Admin Notes</label>
+                    {/* Existing notes list */}
+                    {selected.adminNotes && selected.adminNotes.length > 0 && (
+                      <div className="space-y-2 mb-3">
+                        {selected.adminNotes.map((note, idx) => (
+                          <div key={idx} className="flex items-start gap-2 p-2.5 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs sm:text-sm text-gray-800 break-words">{note.text}</p>
+                              <p className="text-[10px] text-gray-400 mt-0.5">
+                                {new Date(note.createdAt).toLocaleString("en-BD", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setPendingDeleteNote(idx)}
+                              disabled={isDeletingNote}
+                              className="flex-shrink-0 text-red-400 hover:text-red-600 transition disabled:opacity-50"
+                              title="Delete note"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
+                    {/* Add new note */}
+                    <div className="flex gap-2">
+                      <textarea
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        rows={2}
+                        placeholder="Add a note..."
+                        className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+                      />
+                      <button
+                        onClick={doAddNote}
+                        disabled={isAddingNote || !newNote.trim()}
+                        className="px-3 py-2 rounded-lg bg-[#167389] text-white font-semibold hover:bg-[#0f5567] disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5 text-xs transition self-end"
+                      >
+                        {isAddingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Add</span>}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1552,6 +1594,17 @@ export default function OrdersPage() {
               loading={isDeleting}
               onCancel={() => setPendingDelete(null)}
               onConfirm={confirmDelete}
+            />
+
+            <Confirm
+              open={pendingDeleteNote !== null}
+              title="Delete this note?"
+              subtitle="This note will be permanently removed."
+              confirmLabel="Delete"
+              tone="danger"
+              loading={isDeletingNote}
+              onCancel={() => setPendingDeleteNote(null)}
+              onConfirm={doDeleteNote}
             />
           </div>
         )}
