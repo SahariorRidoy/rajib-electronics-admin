@@ -17,6 +17,7 @@ import { customersApi } from "@/services/customers.api";
 import { usersApi } from "@/services/users.api";
 import { settingsApi, publicSettingsApi } from "@/services/settings.api";
 import { courierApi } from "@/services/courier.api";
+import { reviewsApi } from "@/services/reviews.api";
 
 export const store = configureStore({
   reducer: {
@@ -39,6 +40,7 @@ export const store = configureStore({
     [settingsApi.reducerPath]: settingsApi.reducer,
     [publicSettingsApi.reducerPath]: publicSettingsApi.reducer,
     [courierApi.reducerPath]: courierApi.reducer,
+    [reviewsApi.reducerPath]: reviewsApi.reducer,
   },
   middleware: (getDefault) =>
     getDefault().concat(
@@ -59,7 +61,8 @@ export const store = configureStore({
       usersApi.middleware,
       settingsApi.middleware,
       publicSettingsApi.middleware,
-      courierApi.middleware
+      courierApi.middleware,
+      reviewsApi.middleware
     ),
   devTools: process.env.NODE_ENV !== "production",
 });

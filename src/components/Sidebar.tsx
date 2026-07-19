@@ -23,6 +23,7 @@ import {
   KeyRound,
   Settings,
   SendHorizonal,
+  MessageSquare,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -43,6 +44,7 @@ const NAV = [
   { href: "/revenue", label: "Revenue", icon: DollarSign },
   { href: "/users", label: "All Users", icon: Users },
   { href: "/banners", label: "Home Banners", icon: ImageIcon },
+  { href: "/reviews", label: "Reviews", icon: MessageSquare },
   { href: "/courier", label: "Courier", icon: SendHorizonal },
   { href: "/delivery-settings", label: "Delivery Charge", icon: Truck },
   { href: "/site-settings", label: "Site Settings", icon: Settings },
