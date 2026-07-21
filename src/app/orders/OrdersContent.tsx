@@ -24,6 +24,7 @@ import {
   Pencil,
   Copy,
   PhoneCall,
+  StickyNote,
 } from "lucide-react";
 import Image from "@/lib/image";
 import Link from "next/link";
@@ -40,6 +41,7 @@ import {
   useAddOrderNoteMutation,
   useDeleteOrderNoteMutation,
 } from "@/services/orders.api";
+import { useListNotesQuery } from "@/services/notes.api";
 import { useGetProductByIdQuery } from "@/services/products.api";
 import { useProcessReturnMutation } from "@/services/returns.api";
 import type { Order, OrderEditLog, OrderStatus } from "@/types/order";
@@ -384,6 +386,54 @@ function Confirm({
   );
 }
 
+const CHIP_COLORS = [
+  "bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100",
+  "bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100",
+  "bg-green-50 border-green-200 text-green-800 hover:bg-green-100",
+  "bg-pink-50 border-pink-200 text-pink-800 hover:bg-pink-100",
+  "bg-purple-50 border-purple-200 text-purple-800 hover:bg-purple-100",
+  "bg-orange-50 border-orange-200 text-orange-800 hover:bg-orange-100",
+];
+
+function SavedNotesPicker({ onPick, defaultOpen = false }: { onPick: (text: string) => void; defaultOpen?: boolean }) {
+  const { data } = useListNotesQuery();
+  const [open, setOpen] = useState(defaultOpen);
+  const notes = data?.data ?? [];
+  if (notes.length === 0) return null;
+  return (
+    <div className="mb-3 rounded-xl border border-yellow-200 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-yellow-50 hover:bg-yellow-100 transition"
+      >
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-yellow-800">
+          <StickyNote className="w-3.5 h-3.5" />
+          Saved Notes
+          <span className="ml-1 px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-900 text-[10px] font-bold">{notes.length}</span>
+        </span>
+        <span className="text-[10px] text-yellow-700">{open ? "Hide" : "Pick one"}</span>
+      </button>
+      {open && (
+        <div className="p-2.5 bg-white flex flex-wrap gap-2">
+          {notes.map((n, idx) => (
+            <button
+              key={n._id}
+              type="button"
+              onClick={() => { onPick(n.text); setOpen(false); }}
+              className={`flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition text-left max-w-[220px] ${CHIP_COLORS[idx % CHIP_COLORS.length]}`}
+              title={n.text}
+            >
+              <StickyNote className="w-3 h-3 mt-0.5 flex-shrink-0 opacity-60" />
+              <span className="line-clamp-2 leading-snug">{n.text}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   /** local UI state */
@@ -421,6 +471,7 @@ export default function OrdersPage() {
   const [editShipping, setEditShipping] = useState(0);
   const [editNotes, setEditNotes] = useState("");
   const [newNote, setNewNote] = useState("");
+  const [showAddNote, setShowAddNote] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(false);
   const [editingShipping, setEditingShipping] = useState(false);
   const [editingPriceIdx, setEditingPriceIdx] = useState<number | null>(null);
@@ -478,6 +529,7 @@ export default function OrdersPage() {
       setEditShipping(selected.totals.shipping);
       setEditNotes(selected.notes ?? "");
       setNewNote("");
+      setShowAddNote(false);
       setEditingCustomer(false);
       setEditingShipping(false);
       setEditingPriceIdx(null);
@@ -616,6 +668,7 @@ export default function OrdersPage() {
       toast.success("Note added");
       setSelected(result.data);
       setNewNote("");
+      setShowAddNote(false);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       toast.error(String(e?.data?.message || "Failed to add note"));
@@ -1281,23 +1334,43 @@ export default function OrdersPage() {
                   </div>
 
                   {/* Admin Notes */}
-                  <div className="mt-3">
-                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Admin Notes</label>
+                  <div className="mt-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <StickyNote className="w-4 h-4 text-yellow-600" />
+                      <span className="text-xs sm:text-lg font-semibold text-gray-700">Admin Notes</span>
+                      {selected.adminNotes && selected.adminNotes.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-[10px] font-bold">
+                          {selected.adminNotes.length}
+                        </span>
+                      )}
+                      <div className="ml-auto">
+                        {!showAddNote && (
+                          <button
+                            onClick={() => setShowAddNote(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-500 text-white text-xs font-semibold hover:bg-yellow-600 transition"
+                          >
+                            <StickyNote className="w-3.5 h-3.5" />
+                            Add Note
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     {/* Existing notes list */}
                     {selected.adminNotes && selected.adminNotes.length > 0 && (
                       <div className="space-y-2 mb-3">
                         {selected.adminNotes.map((note, idx) => (
-                          <div key={idx} className="flex items-start gap-2 p-2.5 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <div key={idx} className="relative flex items-start gap-2.5 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 rounded-r-xl shadow-sm">
+                            <StickyNote className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs sm:text-sm text-gray-800 break-words">{note.text}</p>
-                              <p className="text-[10px] text-gray-400 mt-0.5">
+                              <p className="text-xs sm:text-sm text-gray-900 font-medium break-words leading-relaxed">{note.text}</p>
+                              <p className="text-[10px] text-amber-600 mt-1 font-medium">
                                 {new Date(note.createdAt).toLocaleString("en-BD", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                               </p>
                             </div>
                             <button
                               onClick={() => setPendingDeleteNote(idx)}
                               disabled={isDeletingNote}
-                              className="flex-shrink-0 text-red-400 hover:text-red-600 transition disabled:opacity-50"
+                              className="flex-shrink-0 p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
                               title="Delete note"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1306,23 +1379,37 @@ export default function OrdersPage() {
                         ))}
                       </div>
                     )}
-                    {/* Add new note */}
-                    <div className="flex gap-2">
-                      <textarea
-                        value={newNote}
-                        onChange={(e) => setNewNote(e.target.value)}
-                        rows={2}
-                        placeholder="Add a note..."
-                        className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
-                      />
-                      <button
-                        onClick={doAddNote}
-                        disabled={isAddingNote || !newNote.trim()}
-                        className="px-3 py-2 rounded-lg bg-[#167389] text-white font-semibold hover:bg-[#0f5567] disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5 text-xs transition self-end"
-                      >
-                        {isAddingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Add</span>}
-                      </button>
-                    </div>
+                    {/* Add note toggle */}
+                    {!showAddNote ? null : (
+                      <div className="space-y-2">
+                        <SavedNotesPicker onPick={(t) => setNewNote(t)} defaultOpen />
+                        <div className="flex gap-2">
+                          <textarea
+                            value={newNote}
+                            onChange={(e) => setNewNote(e.target.value)}
+                            rows={2}
+                            placeholder="Add a note..."
+                            autoFocus
+                            className="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-400 resize-none transition"
+                          />
+                          <div className="flex flex-col gap-1.5 self-end">
+                            <button
+                              onClick={doAddNote}
+                              disabled={isAddingNote || !newNote.trim()}
+                              className="px-3 py-2 rounded-xl bg-yellow-500 text-white font-semibold hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5 text-xs transition"
+                            >
+                              {isAddingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Add</span>}
+                            </button>
+                            <button
+                              onClick={() => { setShowAddNote(false); setNewNote(""); }}
+                              className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500 text-xs hover:bg-gray-50 transition"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
