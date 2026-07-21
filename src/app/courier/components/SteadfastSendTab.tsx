@@ -82,14 +82,15 @@ export default function SteadfastSendTab() {
     if (!selected.size) return;
     const sentOrders = (data?.data?.items ?? []).filter((o) => selected.has(o._id));
     try {
-      await bulkSend(Array.from(selected)).unwrap();
-      toast.success(`${selected.size} orders sent to Steadfast!`);
+      const res = await bulkSend(Array.from(selected)).unwrap();
+      const saved = (res as { savedCount?: number }).savedCount ?? sentOrders.length;
+      toast.success(`${saved} order${saved > 1 ? "s" : ""} sent to Steadfast!`);
       setSelected(new Set());
       refetch();
       setPdfOrders(sentOrders);
     } catch (e: unknown) {
-      const err = e as { data?: { message?: string; code?: string; data?: { message?: string } } };
-      const msg = err?.data?.message || err?.data?.data?.message || err?.data?.code || "Bulk send failed";
+      const err = e as { data?: { message?: string; code?: string } };
+      const msg = err?.data?.message || err?.data?.code || "Bulk send failed";
       toast.error(String(msg));
     }
   };
