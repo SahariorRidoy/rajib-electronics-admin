@@ -86,7 +86,6 @@ export default function SteadfastSendTab() {
       const saved = (res as { savedCount?: number }).savedCount ?? sentOrders.length;
       toast.success(`${saved} order${saved > 1 ? "s" : ""} sent to Steadfast!`);
       setSelected(new Set());
-      refetch();
       setPdfOrders(sentOrders);
     } catch (e: unknown) {
       const err = e as { data?: { message?: string; code?: string } };
@@ -131,7 +130,7 @@ export default function SteadfastSendTab() {
       </div>
     )}
     {pdfOrders && (
-      <BulkSendPdfModal orders={pdfOrders} onClose={() => setPdfOrders(null)} />
+      <BulkSendPdfModal orders={pdfOrders} onClose={() => { setPdfOrders(null); refetch(); }} />
     )}
     <div className="space-y-4">
       {/* Toolbar */}
