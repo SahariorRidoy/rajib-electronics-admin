@@ -1013,6 +1013,27 @@ export default function OrdersPage() {
                               <span>Call Now</span>
                             </a>
                           </div>
+                          {/* Payment status badge */}
+                          {o.payment && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                o.payment.status === "PAID"
+                                  ? "bg-green-100 text-green-700"
+                                  : o.payment.status === "FAILED"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}>
+                                {o.payment.status === "PAID" ? "✓" : o.payment.status === "FAILED" ? "✗" : "○"}
+                                {" "}Delivery Charge: {o.payment.status === "PAID" ? "Paid" : o.payment.status === "FAILED" ? "Failed" : "Pending"}
+                              </span>
+                              {o.payment.status === "PAID" && o.payment.paidAmount && (
+                                <span className="text-xs text-green-600 font-semibold">৳{o.payment.paidAmount}</span>
+                              )}
+                              {o.payment.status === "PAID" && o.payment.payerMobile && (
+                                <span className="text-xs text-gray-500">{o.payment.payerMobile}</span>
+                              )}
+                            </div>
+                          )}
 
                         </div>
                       </div>
@@ -1156,6 +1177,50 @@ export default function OrdersPage() {
               </div>
 
               <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                {/* Payment Info */}
+                {selected.payment && (
+                  <div className={`rounded-xl p-4 border ${
+                    selected.payment.status === "PAID"
+                      ? "bg-green-50 border-green-200"
+                      : selected.payment.status === "FAILED"
+                      ? "bg-red-50 border-red-200"
+                      : "bg-gray-50 border-gray-200"
+                  }`}>
+                    <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      💳 Delivery Charge Payment
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        selected.payment.status === "PAID"
+                          ? "bg-green-200 text-green-800"
+                          : selected.payment.status === "FAILED"
+                          ? "bg-red-200 text-red-800"
+                          : "bg-gray-200 text-gray-700"
+                      }`}>
+                        {selected.payment.status === "PAID" ? "✓ PAID" : selected.payment.status === "FAILED" ? "✗ FAILED" : "PENDING"}
+                      </span>
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {selected.payment.paidAmount ? (
+                        <p><span className="text-gray-500">Amount Paid:</span> <span className="font-semibold">৳{selected.payment.paidAmount}</span></p>
+                      ) : null}
+                      {selected.payment.method && selected.payment.method !== "CASH_ON_DELIVERY" && (
+                        <p><span className="text-gray-500">Method:</span> <span className="font-semibold">{selected.payment.method}</span></p>
+                      )}
+                      {selected.payment.transactionId && (
+                        <p><span className="text-gray-500">Trx ID:</span> <span className="font-semibold font-mono">{selected.payment.transactionId}</span></p>
+                      )}
+                      {selected.payment.payerMobile && (
+                        <p><span className="text-gray-500">Payer Mobile:</span> <span className="font-semibold">{selected.payment.payerMobile}</span></p>
+                      )}
+                      {selected.payment.paidAt && (
+                        <p><span className="text-gray-500">Paid At:</span> <span className="font-semibold">{new Date(selected.payment.paidAt).toLocaleString("en-BD")}</span></p>
+                      )}
+                      {selected.payment.invoiceNumber && (
+                        <p className="col-span-2"><span className="text-gray-500">Invoice #:</span> <span className="font-semibold font-mono text-[10px]">{selected.payment.invoiceNumber}</span></p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Customer — click pencil to edit */}
                 <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-pink-100">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">

@@ -27,7 +27,15 @@ export type OrderStatus =
     lines: OrderLine[];
     totals: { subTotal: number; shipping: number; grandTotal: number };
     status: OrderStatus;
-    payment?: { method: string; status: string; transactionId?: string };
+    payment?: {
+      method: string;
+      status: string;
+      transactionId?: string;
+      invoiceNumber?: string;
+      paidAmount?: number;
+      paidAt?: string;
+      payerMobile?: string;
+    };
     notes?: string;
     adminNotes?: Array<{ text: string; createdAt: string }>;
     deliveryZone?: "inside" | "outside";

@@ -4,6 +4,7 @@ export type DeliverySettings = {
   insideDhakaCharge: number;
   outsideDhakaCharge: number;
   isActive: boolean;
+  deliveryChargePaymentRequired: boolean;
   createdAt: string;
   updatedAt: string;
   __v: number;
@@ -20,4 +21,5 @@ export type UpdateDeliverySettingsDTO = {
   insideDhakaCharge: number;
   outsideDhakaCharge: number;
   isActive: boolean;
+  deliveryChargePaymentRequired: boolean;
 };
