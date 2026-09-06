@@ -313,8 +313,12 @@ export default function PathaoSendModal({ order, onClose, onSuccess }: Props) {
                   )}
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">COD</p>
-                  <p className="text-xl font-black text-purple-700">৳{order.totals.grandTotal}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
+                    {order.payment?.status === "PAID" ? "Delivery Paid" : "COD"}
+                  </p>
+                  <p className="text-xl font-black text-purple-700">
+                    ৳{order.payment?.status === "PAID" ? order.totals.subTotal : order.totals.grandTotal}
+                  </p>
                   <p className="text-[10px] text-gray-400">{order.lines.length} item{order.lines.length > 1 ? "s" : ""}</p>
                 </div>
               </div>

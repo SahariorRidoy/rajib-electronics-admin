@@ -290,15 +290,21 @@ export default function SteadfastSendTab() {
                         <div className="flex items-center gap-3 text-xs text-gray-500">
                           <span className="flex items-center gap-1">
                             <CreditCard className="w-3.5 h-3.5 text-gray-400" />
-                            COD
+                            {o.payment?.status === "PAID" ? (
+                              <span className="text-emerald-600 font-semibold">Delivery Paid Online</span>
+                            ) : "COD"}
                           </span>
                           <span>Subtotal: ৳{o.totals.subTotal}</span>
-                          <span>Shipping: ৳{o.totals.shipping}</span>
+                          {o.payment?.status !== "PAID" && (
+                            <span>Shipping: ৳{o.totals.shipping}</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
                             <p className="text-xs text-gray-400">COD Amount</p>
-                            <p className="text-base font-bold text-[#167389]">৳{o.totals.grandTotal}</p>
+                            <p className="text-base font-bold text-[#167389]">
+                              ৳{o.payment?.status === "PAID" ? o.totals.subTotal : o.totals.grandTotal}
+                            </p>
                           </div>
                           <button
                             onClick={() => openNoteModal(o._id)}
