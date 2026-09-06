@@ -25,6 +25,8 @@ import {
   Copy,
   PhoneCall,
   StickyNote,
+  Plus,
+  MapPin,
 } from "lucide-react";
 import Image from "@/lib/image";
 import Link from "next/link";
@@ -41,7 +43,10 @@ import {
   useAddOrderNoteMutation,
   useDeleteOrderNoteMutation,
   useGetOrdersByPhoneQuery,
+  useCreateAdminOrderMutation,
 } from "@/services/orders.api";
+import { useGetDeliverySettingsQuery } from "@/services/delivery.api";
+import { useListProductsQuery } from "@/services/products.api";
 import { useListNotesQuery } from "@/services/notes.api";
 import { useGetProductByIdQuery } from "@/services/products.api";
 import { useProcessReturnMutation } from "@/services/returns.api";
@@ -495,9 +500,266 @@ function PhoneOrderHistory({ phone, currentOrderId }: { phone: string; currentOr
   );
 }
 
+function CreateOrderModal({ onClose }: { onClose: () => void }) {
+  const [createOrder, { isLoading }] = useCreateAdminOrderMutation();
+  const { data: deliveryData } = useGetDeliverySettingsQuery();
+  const settings = deliveryData?.data;
+
+  const [productSearch, setProductSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { data: productsData, isFetching: isSearching } = useListProductsQuery(
+    { q: debouncedSearch },
+    { skip: debouncedSearch.length < 2 }
+  );
+  const searchResults: { _id: string; title: string; price: number; stock: number; image?: string; images?: string[] }[] =
+    productsData?.data?.items ?? productsData?.data ?? [];
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(productSearch.trim()), 400);
+    return () => clearTimeout(t);
+  }, [productSearch]);
+
+  const [customer, setCustomer] = useState({ name: "", phone: "", address: "" });
+  const [deliveryZone, setDeliveryZone] = useState<"inside" | "outside">("outside");
+  const [items, setItems] = useState<{ productId: string; title: string; price: number; qty: number; stock: number; image?: string }[]>([]);
+  const [notes, setNotes] = useState("");
+
+  const shippingCharge =
+    deliveryZone === "inside"
+      ? (settings?.insideDhakaCharge ?? 60)
+      : (settings?.outsideDhakaCharge ?? 120);
+  const subTotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const grandTotal = subTotal + shippingCharge;
+
+  const addProduct = (p: { _id: string; title: string; price: number; stock: number; image?: string; images?: string[] }) => {
+    if (items.find((i) => i.productId === p._id)) return;
+    setItems((prev) => [...prev, { productId: p._id, title: p.title, price: p.price, qty: 1, stock: p.stock, image: p.image || p.images?.[0] }]);
+    setProductSearch("");
+    setDebouncedSearch("");
+  };
+
+  const updateQty = (idx: number, qty: number) =>
+    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, qty: Math.max(1, Math.min(qty, it.stock)) } : it)));
+
+  const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
+
+  const handleSubmit = async () => {
+    if (!customer.name.trim() || !customer.phone.trim() || !customer.address.trim()) {
+      toast.error("Please fill in all customer fields");
+      return;
+    }
+    if (items.length === 0) {
+      toast.error("Add at least one product");
+      return;
+    }
+    try {
+      await createOrder({
+        customer,
+        items: items.map((i) => ({ productId: i.productId, qty: i.qty })),
+        deliveryZone,
+        notes: notes.trim() || undefined,
+      }).unwrap();
+      toast.success("Order created successfully!");
+      onClose();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      toast.error(e?.data?.message ?? "Failed to create order");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8 border border-pink-100 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-pink-100 px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-[#167389]" />
+            Create Manual Order
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-pink-50 rounded-xl transition">
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Customer Info */}
+          <div className="bg-pink-50 rounded-xl p-4 border border-pink-100 space-y-3">
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <User className="w-4 h-4 text-pink-600" /> Customer Info
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Name *</label>
+                <input
+                  value={customer.name}
+                  onChange={(e) => setCustomer((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="Customer name"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Phone *</label>
+                <input
+                  value={customer.phone}
+                  onChange={(e) => setCustomer((p) => ({ ...p, phone: e.target.value }))}
+                  placeholder="01XXXXXXXXX"
+                  type="tel"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Address *</label>
+              <textarea
+                value={customer.address}
+                onChange={(e) => setCustomer((p) => ({ ...p, address: e.target.value }))}
+                placeholder="Full delivery address"
+                rows={2}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Delivery Zone */}
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-3">
+              <MapPin className="w-4 h-4 text-blue-600" /> Delivery Zone
+            </h3>
+            <select
+              value={deliveryZone}
+              onChange={(e) => setDeliveryZone(e.target.value as "inside" | "outside")}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+            >
+              <option value="inside">Inside Dhaka — ৳{settings?.insideDhakaCharge ?? 60}</option>
+              <option value="outside">Outside Dhaka — ৳{settings?.outsideDhakaCharge ?? 120}</option>
+            </select>
+          </div>
+
+          {/* Product Search */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-3">
+              <Package className="w-4 h-4 text-pink-600" /> Add Products
+            </h3>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Search product by name..."
+                className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300"
+              />
+              {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />}
+            </div>
+            {/* Search results dropdown */}
+            {debouncedSearch.length >= 2 && searchResults.length > 0 && (
+              <div className="mt-1 border border-gray-200 rounded-xl overflow-hidden shadow-lg max-h-48 overflow-y-auto">
+                {searchResults.map((p) => (
+                  <button
+                    key={p._id}
+                    onClick={() => addProduct(p)}
+                    disabled={!!items.find((i) => i.productId === p._id) || p.stock === 0}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-pink-50 text-left text-sm transition disabled:opacity-40 disabled:cursor-not-allowed border-b border-gray-100 last:border-0"
+                  >
+                    {(p.image || p.images?.[0]) ? (
+                      <Image src={p.image || p.images![0]} alt={p.title} width={32} height={32} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-pink-100 flex-shrink-0 flex items-center justify-center"><Package className="w-3 h-3 text-pink-300" /></div>
+                    )}
+                    <span className="font-medium text-gray-800 truncate flex-1">{p.title}</span>
+                    <span className="ml-3 text-xs text-gray-500 shrink-0">৳{p.price} · Stock: {p.stock}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Selected Items */}
+          {items.length > 0 && (
+            <div className="space-y-2">
+              {items.map((item, idx) => (
+                <div key={item.productId} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                  {item.image ? (
+                    <Image src={item.image} alt={item.title} width={40} height={40} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-pink-100 flex-shrink-0 flex items-center justify-center"><Package className="w-4 h-4 text-pink-300" /></div>
+                  )}
+                  <span className="flex-1 text-sm font-medium text-gray-800 truncate">{item.title}</span>
+                  <span className="text-xs text-gray-500 shrink-0">৳{item.price}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => updateQty(idx, item.qty - 1)}
+                      disabled={item.qty <= 1}
+                      className="w-7 h-7 rounded-lg bg-pink-100 text-pink-700 font-bold flex items-center justify-center hover:bg-pink-200 disabled:opacity-40 transition"
+                    >−</button>
+                    <span className="w-7 text-center text-sm font-bold">{item.qty}</span>
+                    <button
+                      onClick={() => updateQty(idx, item.qty + 1)}
+                      disabled={item.qty >= item.stock}
+                      className="w-7 h-7 rounded-lg bg-pink-100 text-pink-700 font-bold flex items-center justify-center hover:bg-pink-200 disabled:opacity-40 transition"
+                    >+</button>
+                  </div>
+                  <span className="text-sm font-bold text-pink-600 w-16 text-right shrink-0">৳{item.price * item.qty}</span>
+                  <button onClick={() => removeItem(idx)} className="text-red-400 hover:text-red-600 transition shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+
+              {/* Totals */}
+              <div className="mt-2 pt-3 border-t-2 border-pink-200 space-y-1.5 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>Subtotal</span><span className="font-semibold">৳{subTotal}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Delivery ({deliveryZone === "inside" ? "Inside Dhaka" : "Outside Dhaka"})</span>
+                  <span className="font-semibold">৳{shippingCharge}</span>
+                </div>
+                <div className="flex justify-between text-base font-bold text-gray-900 pt-1 border-t border-pink-100">
+                  <span>Grand Total</span><span className="text-pink-600">৳{grandTotal}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Notes (optional)</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any special instructions..."
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-1">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-pink-200 text-gray-700 font-medium hover:bg-pink-50 transition text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-[#167389] text-white font-semibold hover:bg-[#0f5567] disabled:opacity-50 inline-flex items-center justify-center gap-2 transition text-sm"
+            >
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create Order
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   /** local UI state */
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
   const [phoneSearch, setPhoneSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
@@ -907,14 +1169,25 @@ export default function OrdersPage() {
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Dashboard</span>
             </button>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#167389] to-[#167389] mb-2 flex items-center gap-2 sm:gap-3">
-              <ClipboardList className="w-7 h-7 sm:w-9 sm:h-9 lg:w-10 lg:h-10 text-[#167389]" />
-              Orders
-              {!isLoading && <span className="text-lg sm:text-xl text-gray-600">({total})</span>}
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600">
-              View & manage customer orders from your database
-            </p>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#167389] to-[#167389] mb-2 flex items-center gap-2 sm:gap-3">
+                  <ClipboardList className="w-7 h-7 sm:w-9 sm:h-9 lg:w-10 lg:h-10 text-[#167389]" />
+                  Orders
+                  {!isLoading && <span className="text-lg sm:text-xl text-gray-600">({total})</span>}
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600">
+                  View & manage customer orders from your database
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCreateOrder(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#167389] text-white font-semibold hover:bg-[#0f5567] transition text-sm shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Create Order
+              </button>
+            </div>
           </div>
 
           {/* Filters */}
@@ -1953,6 +2226,9 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Create Order Modal */}
+      {showCreateOrder && <CreateOrderModal onClose={() => setShowCreateOrder(false)} />}
 
       {/* Lightbox */}
       {lightboxSrc && (

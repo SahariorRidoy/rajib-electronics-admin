@@ -127,6 +127,19 @@ export const ordersApi = createApi({
     getOrdersByPhone: builder.query<ApiOk<{ _id: string; customerName: string; status: string; grandTotal: number; itemCount: number; lines: { title: string; qty: number; price: number }[]; createdAt: string }[]>, string>({
       query: (phone) => `/orders/by-phone/${encodeURIComponent(phone)}`,
     }),
+
+    createAdminOrder: builder.mutation<
+      ApiOk<{ orderId: string; totals: { subTotal: number; shipping: number; grandTotal: number } }>,
+      {
+        customer: { name: string; phone: string; address: string };
+        items: { productId: string; qty: number }[];
+        deliveryZone: "inside" | "outside";
+        notes?: string;
+      }
+    >({
+      query: (body) => ({ url: "/admin/orders", method: "POST", body }),
+      invalidatesTags: [{ type: "Orders", id: "LIST" }],
+    }),
   }),
 });
 
@@ -141,6 +154,7 @@ export const {
   useAddOrderNoteMutation,
   useDeleteOrderNoteMutation,
   useGetOrdersByPhoneQuery,
+  useCreateAdminOrderMutation,
 } = ordersApi;
 
 export const useGetOrderByIdQuery = ordersApi.endpoints.getOrder.useQuery;
