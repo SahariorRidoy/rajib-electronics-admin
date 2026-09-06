@@ -19,6 +19,7 @@ import {
   useUpdateSocialLinkMutation,
   useDeleteSocialLinkMutation,
   useGetPublicSettingsQuery,
+  useUpdateTiktokPixelMutation,
   type SocialLink,
 } from "@/services/settings.api";
 import { UploadValue } from "@/components/UploadImage";
@@ -84,6 +85,10 @@ export default function SiteSettingsPage() {
   const [updateSocialLink] = useUpdateSocialLinkMutation();
   const [deleteSocialLink] = useDeleteSocialLinkMutation();
 
+  const [updateTiktokPixel, { isLoading: savingPixel }] = useUpdateTiktokPixelMutation();
+  const [pixelId, setPixelId] = useState("");
+  const [pixelEnabled, setPixelEnabled] = useState(false);
+
   const [siteName, setSiteName] = useState("");
   const [hotline, setHotline] = useState("");
   const [phones, setPhones] = useState<string[]>([]);
@@ -102,8 +107,16 @@ export default function SiteSettingsPage() {
     if (data) {
       setPhones(data.contactInfo?.phones ?? []);
       setEmails(data.contactInfo?.emails ?? []);
+      setPixelEnabled(data.tiktokPixel?.isEnabled ?? false);
     }
   }, [data]);
+
+  const handleSaveTiktokPixel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateTiktokPixel({ pixelId: pixelId.trim() || undefined, isEnabled: pixelEnabled });
+    toast.success("TikTok Pixel saved");
+    setPixelId("");
+  };
 
   const handleSiteName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -497,6 +510,41 @@ export default function SiteSettingsPage() {
             )}
           </div>
         )}
+      </SectionCard>
+
+      {/* TikTok Pixel */}
+      <SectionCard icon={<span className="text-xs font-bold">TT</span>} title="TikTok Pixel">
+        <CurrentValue label="Current Pixel ID" value={data?.tiktokPixel?.pixelId || "Not set"} />
+        <form onSubmit={handleSaveTiktokPixel} className="space-y-3">
+          <input
+            value={pixelId}
+            onChange={(e) => setPixelId(e.target.value)}
+            placeholder="Enter TikTok Pixel ID (e.g. C1A2B3D4E5F6G7H8)"
+            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#167389] focus:ring-2 focus:ring-[#167389]/10 transition"
+          />
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <div
+                onClick={() => setPixelEnabled((v) => !v)}
+                className={`w-10 h-5 rounded-full transition-colors relative ${
+                  pixelEnabled ? "bg-[#167389]" : "bg-gray-200"
+                }`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                  pixelEnabled ? "translate-x-5" : "translate-x-0.5"
+                }`} />
+              </div>
+              <span className="text-sm text-gray-600">{pixelEnabled ? "Enabled" : "Disabled"}</span>
+            </label>
+            <button
+              type="submit"
+              disabled={savingPixel}
+              className="px-5 py-2 bg-[#167389] text-white text-sm font-medium rounded-xl hover:bg-[#125f73] disabled:opacity-40 transition"
+            >
+              {savingPixel ? "Saving..." : "Save Pixel"}
+            </button>
+          </div>
+        </form>
       </SectionCard>
     </div>
   );

@@ -20,6 +20,11 @@ export interface ContactInfo {
   emails: string[];
 }
 
+export interface TiktokPixel {
+  pixelId: string;
+  isEnabled: boolean;
+}
+
 export interface SiteSettings {
   _id: string;
   siteName: string;
@@ -27,6 +32,7 @@ export interface SiteSettings {
   logos: Logo[];
   contactInfo: ContactInfo;
   socialLinks: SocialLink[];
+  tiktokPixel: TiktokPixel;
 }
 
 export const publicSettingsApi = createApi({
@@ -97,6 +103,11 @@ export const settingsApi = createApi({
       transformResponse: (res: { ok: boolean; data: SocialLink[] }) => res.data,
       invalidatesTags: ["Settings"],
     }),
+    updateTiktokPixel: builder.mutation<TiktokPixel, { pixelId?: string; isEnabled?: boolean }>({
+      query: (body) => ({ url: "/admin/settings/tiktok-pixel", method: "PATCH", body }),
+      transformResponse: (res: { ok: boolean; data: TiktokPixel }) => res.data,
+      invalidatesTags: ["Settings"],
+    }),
   }),
 });
 
@@ -111,4 +122,5 @@ export const {
   useAddSocialLinkMutation,
   useUpdateSocialLinkMutation,
   useDeleteSocialLinkMutation,
+  useUpdateTiktokPixelMutation,
 } = settingsApi;
