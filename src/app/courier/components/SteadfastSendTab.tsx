@@ -291,19 +291,17 @@ export default function SteadfastSendTab() {
                           <span className="flex items-center gap-1">
                             <CreditCard className="w-3.5 h-3.5 text-gray-400" />
                             {o.payment?.status === "PAID" ? (
-                              <span className="text-emerald-600 font-semibold">Delivery Paid Online</span>
+                              <span className="text-emerald-600 font-semibold">Paid Online</span>
                             ) : "COD"}
                           </span>
                           <span>Subtotal: ৳{o.totals.subTotal}</span>
-                          {o.payment?.status !== "PAID" && (
-                            <span>Shipping: ৳{o.totals.shipping}</span>
-                          )}
+                          <span>Shipping: ৳{o.totals.shipping}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
                             <p className="text-xs text-gray-400">COD Amount</p>
                             <p className="text-base font-bold text-[#167389]">
-                              ৳{o.payment?.status === "PAID" ? o.totals.subTotal : o.totals.grandTotal}
+                              ৳{o.codAmount ?? o.totals.grandTotal}
                             </p>
                           </div>
                           <button

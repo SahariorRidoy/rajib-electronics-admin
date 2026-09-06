@@ -196,15 +196,13 @@ export default function PathaoSendTab() {
                         <p className="text-xs text-gray-400 flex items-center gap-1 justify-end">
                           <CreditCard className="w-3 h-3" />
                           {o.payment?.status === "PAID" ? (
-                            <span className="text-emerald-600 font-semibold">Delivery Paid Online</span>
+                            <span className="text-emerald-600 font-semibold">Paid Online</span>
                           ) : "COD"}
                         </p>
                         <p className="text-lg font-bold text-[#167389]">
-                          ৳{o.payment?.status === "PAID" ? o.totals.subTotal : o.totals.grandTotal}
+                          ৳{o.codAmount ?? o.totals.grandTotal}
                         </p>
-                        {o.payment?.status !== "PAID" && (
-                          <p className="text-xs text-gray-400">+৳{o.totals.shipping} shipping</p>
-                        )}
+                        <p className="text-xs text-gray-400">Sub: ৳{o.totals.subTotal} · Ship: ৳{o.totals.shipping}</p>
                       </div>
                       <button
                         onClick={() => setTarget(o)}

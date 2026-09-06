@@ -25,6 +25,9 @@ export interface Shipment {
   customer: { name: string; phone: string; district?: string };
   totals: { grandTotal: number; subTotal: number; shipping: number };
   lines: ShipmentLine[];
+  payment?: { status: string };
+  deliveryChargePaid?: boolean;
+  codAmount: number;
 }
 
 export interface PathaoCity {

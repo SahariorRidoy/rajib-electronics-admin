@@ -39,6 +39,8 @@ export type OrderStatus =
     notes?: string;
     adminNotes?: Array<{ text: string; createdAt: string }>;
     deliveryZone?: "inside" | "outside";
+    deliveryChargePaid?: boolean;
+    codAmount?: number;
     courier?: {
       provider: "steadfast" | "pathao";
       consignmentId: string;

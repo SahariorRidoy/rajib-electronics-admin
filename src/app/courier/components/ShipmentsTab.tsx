@@ -243,7 +243,7 @@ export default function ShipmentsTab() {
                       <p className="text-xs text-gray-400 flex items-center gap-1 justify-end">
                         <CreditCard className="w-3 h-3" /> COD
                       </p>
-                      <p className="text-lg font-bold text-[#167389]">৳{s.totals?.grandTotal}</p>
+                      <p className="text-lg font-bold text-[#167389]">৳{s.codAmount}</p>
                     </div>
                     <div className="flex gap-2">
                       <button
