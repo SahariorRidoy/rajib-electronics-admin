@@ -123,6 +123,10 @@ export const ordersApi = createApi({
           ? [{ type: "Orders", id: r.data._id }, { type: "Orders", id: "LIST" }]
           : [{ type: "Orders", id: "LIST" }],
     }),
+
+    getOrdersByPhone: builder.query<ApiOk<{ _id: string; customerName: string; status: string; grandTotal: number; itemCount: number; lines: { title: string; qty: number; price: number }[]; createdAt: string }[]>, string>({
+      query: (phone) => `/orders/by-phone/${encodeURIComponent(phone)}`,
+    }),
   }),
 });
 
@@ -136,6 +140,7 @@ export const {
   useDeleteOrderMutation,
   useAddOrderNoteMutation,
   useDeleteOrderNoteMutation,
+  useGetOrdersByPhoneQuery,
 } = ordersApi;
 
 export const useGetOrderByIdQuery = ordersApi.endpoints.getOrder.useQuery;

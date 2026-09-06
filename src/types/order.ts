@@ -50,6 +50,7 @@ export type OrderStatus =
     };
     createdAt?: string;
     updatedAT?: string;
+    customerFlags?: { sameDay: boolean; returning: boolean };
   };
 
   export type CreateOrderDTO = {

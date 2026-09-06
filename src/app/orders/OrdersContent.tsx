@@ -40,6 +40,7 @@ import {
   useDeleteOrderMutation,
   useAddOrderNoteMutation,
   useDeleteOrderNoteMutation,
+  useGetOrdersByPhoneQuery,
 } from "@/services/orders.api";
 import { useListNotesQuery } from "@/services/notes.api";
 import { useGetProductByIdQuery } from "@/services/products.api";
@@ -428,6 +429,66 @@ function SavedNotesPicker({ onPick, defaultOpen = false }: { onPick: (text: stri
               <span className="line-clamp-2 leading-snug">{n.text}</span>
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PhoneOrderHistory({ phone, currentOrderId }: { phone: string; currentOrderId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, isFetching } = useGetOrdersByPhoneQuery(phone, { skip: !open });
+  const orders = (data?.data ?? []).filter((o) => o._id !== currentOrderId);
+
+  const statusColors: Record<string, string> = {
+    PENDING: "bg-amber-100 text-amber-700",
+    IN_PROGRESS: "bg-blue-100 text-blue-700",
+    IN_SHIPPING: "bg-purple-100 text-purple-700",
+    DELIVERED: "bg-emerald-100 text-emerald-700",
+    CANCELLED: "bg-red-100 text-red-700",
+    RETURNED: "bg-orange-100 text-orange-700",
+  };
+
+  return (
+    <div className="border border-blue-200 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 transition text-sm font-semibold text-blue-800"
+      >
+        <span className="flex items-center gap-2">
+          🔁 Previous Orders for {phone}
+        </span>
+        <span className="text-xs text-blue-500">{open ? "Hide" : "Show"}</span>
+      </button>
+      {open && (
+        <div className="border-t border-blue-100 divide-y divide-gray-100">
+          {isFetching ? (
+            <div className="flex items-center gap-2 px-4 py-3 text-sm text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+            </div>
+          ) : orders.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-gray-400">No other orders found.</p>
+          ) : (
+            orders.map((o) => (
+              <div key={o._id} className="px-4 py-3 text-xs space-y-1">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="font-mono text-gray-500 text-[10px]">{o._id}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusColors[o.status] ?? "bg-gray-100 text-gray-600"}`}>
+                    {o.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-gray-600">
+                  <span>{new Date(o.createdAt).toLocaleDateString("en-BD", { year: "numeric", month: "short", day: "numeric" })}</span>
+                  <span className="font-bold text-gray-800">৳{o.grandTotal} · {o.itemCount} item{o.itemCount !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="text-gray-500 leading-relaxed">
+                  {o.lines.map((l, i) => (
+                    <span key={i}>{l.title} ×{l.qty}{i < o.lines.length - 1 ? ", " : ""}</span>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
@@ -980,6 +1041,16 @@ export default function OrdersPage() {
                             {o._id}
                           </h3>
                           <StatusBadge status={o.status} />
+                          {o.customerFlags?.sameDay && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200" title="Same phone ordered again today">
+                              ⚠ Same-Day Duplicate
+                            </span>
+                          )}
+                          {o.customerFlags?.returning && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200" title="This customer has ordered before">
+                              🔁 Returning Customer
+                            </span>
+                          )}
                           <span className="flex items-center gap-1 text-sm sm:text-sm text-gray-600 font-normal">
                             <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                             {bnDate(o.createdAt)}
@@ -1015,7 +1086,7 @@ export default function OrdersPage() {
                           </div>
                           {/* Payment status badge */}
                           {o.payment && (
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap pl-3 border-gray-200">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
                                 o.payment.status === "PAID"
                                   ? "bg-green-100 text-green-700"
@@ -1026,7 +1097,7 @@ export default function OrdersPage() {
                                 {o.payment.status === "PAID" ? "✓" : o.payment.status === "FAILED" ? "✗" : "○"}
                                 {" "}Delivery Charge: {o.payment.status === "PAID" ? "Paid" : o.payment.status === "FAILED" ? "Failed" : "Pending"}
                               </span>
-                              {o.payment.status === "PAID" && o.payment.paidAmount && (
+                              {o.payment.status === "PAID" && !!o.payment.paidAmount && (
                                 <span className="text-xs text-green-600 font-semibold">৳{o.payment.paidAmount}</span>
                               )}
                               {o.payment.status === "PAID" && o.payment.payerMobile && (
@@ -1350,11 +1421,22 @@ export default function OrdersPage() {
                       <span className="font-semibold">৳{editSubTotal}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">
+                      <span className="flex items-center gap-1.5 text-gray-600">
                         Shipping Charge
                         {selected.deliveryZone && (
-                          <span className="ml-1 text-xs text-gray-400">
+                          <span className="text-xs text-gray-400">
                             ({selected.deliveryZone === "inside" ? "Inside Dhaka" : "Outside Dhaka"})
+                          </span>
+                        )}
+                        {selected.payment && (
+                          <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                            selected.payment.status === "PAID"
+                              ? "bg-green-100 text-green-700"
+                              : selected.payment.status === "FAILED"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}>
+                            {selected.payment.status === "PAID" ? "✓ Paid" : selected.payment.status === "FAILED" ? "✗ Failed" : "Pending"}
                           </span>
                         )}
                       </span>
@@ -1538,6 +1620,11 @@ export default function OrdersPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Previous orders for this phone */}
+                {(selected.customerFlags?.returning || selected.customerFlags?.sameDay) && (
+                  <PhoneOrderHistory phone={selected.customer.phone} currentOrderId={selected._id} />
+                )}
 
                 {/* Edit history */}
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
