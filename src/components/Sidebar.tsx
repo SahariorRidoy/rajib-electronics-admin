@@ -25,6 +25,7 @@ import {
   SendHorizonal,
   MessageSquare,
   StickyNote,
+  Zap,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -35,20 +36,21 @@ import { useGetPublicSettingsQuery } from "@/services/settings.api";
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "Orders", icon: ClipboardList },
-  { href: "/customers", label: "Customers", icon: Users },
   { href: "/products", label: "All Products", icon: Package },
   { href: "/inventory", label: "Stock Management", icon: PackageSearch },
+  { href: "/flash-sales", label: "Flash Sales", icon: Zap },
+  { href: "/courier", label: "Courier", icon: SendHorizonal },
+  { href: "/delivery-settings", label: "Delivery Charge", icon: Truck },
+  { href: "/notes", label: "Notes", icon: StickyNote },
+  { href: "/users", label: "All Users", icon: Users },
+  { href: "/returns", label: "Order Returns", icon: PackageX },
+  { href: "/revenue", label: "Revenue", icon: DollarSign },
+  { href: "/customers", label: "Customers", icon: Users },
   { href: "/categories", label: "All Categories", icon: FolderTree },
   { href: "/subcategories", label: "Subcategories", icon: Layers },
   { href: "/brands", label: "Brands Manufactures", icon: Tag },
-  { href: "/returns", label: "Order Returns", icon: PackageX },
-  { href: "/revenue", label: "Revenue", icon: DollarSign },
-  { href: "/users", label: "All Users", icon: Users },
   { href: "/banners", label: "Home Banners", icon: ImageIcon },
-  { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/reviews", label: "Reviews", icon: MessageSquare },
-  { href: "/courier", label: "Courier", icon: SendHorizonal },
-  { href: "/delivery-settings", label: "Delivery Charge", icon: Truck },
   { href: "/site-settings", label: "Site Settings", icon: Settings },
   { href: "/change-password", label: "Change Password", icon: KeyRound },
 ];

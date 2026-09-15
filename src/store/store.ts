@@ -19,6 +19,7 @@ import { settingsApi, publicSettingsApi } from "@/services/settings.api";
 import { courierApi } from "@/services/courier.api";
 import { reviewsApi } from "@/services/reviews.api";
 import { notesApi } from "@/services/notes.api";
+import { flashSaleApi } from "@/services/flashsale.api";
 
 export const store = configureStore({
   reducer: {
@@ -43,6 +44,7 @@ export const store = configureStore({
     [courierApi.reducerPath]: courierApi.reducer,
     [reviewsApi.reducerPath]: reviewsApi.reducer,
     [notesApi.reducerPath]: notesApi.reducer,
+    [flashSaleApi.reducerPath]: flashSaleApi.reducer,
   },
   middleware: (getDefault) =>
     getDefault().concat(
@@ -65,7 +67,8 @@ export const store = configureStore({
       publicSettingsApi.middleware,
       courierApi.middleware,
       reviewsApi.middleware,
-      notesApi.middleware
+      notesApi.middleware,
+      flashSaleApi.middleware
     ),
   devTools: process.env.NODE_ENV !== "production",
 });
