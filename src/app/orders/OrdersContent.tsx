@@ -756,6 +756,36 @@ function CreateOrderModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function ListLineImage({ line, onLightbox }: { line: { productId: string; qty: number; title: string; image?: string }; onLightbox: (src: string) => void }) {
+  const { data: productData } = useGetProductByIdQuery(line.productId, { skip: !!line.image });
+  const image = line.image || productData?.data?.images?.[0] || productData?.data?.image;
+  return (
+    <div className="relative flex-shrink-0 flex items-center gap-2" title={`${line.title} \u00d7 ${line.qty}`}>
+      {image ? (
+        <Image
+          src={image}
+          alt={line.title}
+          width={48}
+          height={48}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-80 transition flex-shrink-0"
+          onClick={() => onLightbox(image)}
+          onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+        />
+      ) : (
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-pink-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+          <Package className="w-4 h-4 text-pink-300" />
+        </div>
+      )}
+      {line.qty > 1 && (
+        <span className="absolute -top-1 left-7 sm:left-9 bg-[#167389] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+          {line.qty}
+        </span>
+      )}
+      <p className="text-xs text-gray-700 font-medium leading-tight w-48">{line.title}</p>
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   /** local UI state */
@@ -1419,29 +1449,7 @@ export default function OrdersPage() {
                     <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
                       <div className="flex items-center gap-2 flex-wrap">
                         {o.lines.map((line, idx) => (
-                          <div key={idx} className="relative flex-shrink-0 flex items-center gap-2" title={`${line.title} × ${line.qty}`}>
-                            {line.image ? (
-                              <Image
-                                src={line.image}
-                                alt={line.title}
-                                width={48}
-                                height={48}
-                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-80 transition flex-shrink-0"
-                                onClick={() => setLightboxSrc(line.image!)}
-                                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
-                              />
-                            ) : (
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-pink-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
-                                <Package className="w-4 h-4 text-pink-300" />
-                              </div>
-                            )}
-                            {line.qty > 1 && (
-                              <span className="absolute -top-1 left-7 sm:left-9 bg-[#167389] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
-                                {line.qty}
-                              </span>
-                            )}
-                            <p className="text-xs text-gray-700 font-medium leading-tight w-48">{line.title}</p>
-                          </div>
+                          <ListLineImage key={idx} line={line} onLightbox={setLightboxSrc} />
                         ))}
                         <div className="ml-auto text-right">
                           <p className="text-sm font-semibold text-gray-700">Subtotal ৳{o.totals.subTotal}</p>
